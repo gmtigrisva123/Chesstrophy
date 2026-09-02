@@ -1,0 +1,3 @@
+# Fast gate: lints and formats only the files being committed.
+# The full suite runs in `pre-push` and again in CI.
+npx lint-staged

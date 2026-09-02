@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "//": [
+    "The codebase is plain JavaScript, not TypeScript. This config exists so",
+    "`npm run typecheck` can use the TypeScript compiler as a static analyser:",
+    "it reads the JSDoc annotations across src/ and catches misspelled imports,",
+    "bad property access and wrong call signatures that ESLint cannot see.",
+    "`checkJs` is off globally on purpose: JSX components infer every destructured",
+    "prop as required, so a blanket check buries real findings under thousands of",
+    "false positives. Instead, modules opt in one at a time with a `// @ts-check`",
+    "pragma once their JSDoc is complete — see docs/TESTING.md. That ratchet only",
+    "ever tightens."
+  ],
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
+
+    "strict": false,
+    "noImplicitAny": false,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
+  },
+  "include": ["src", "tests", "*.config.js", "scripts"],
+  "exclude": ["node_modules", "dist", "coverage", "legacy"]
+}

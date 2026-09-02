@@ -1,0 +1,27 @@
+# Build output and dependencies
+dist/
+coverage/
+node_modules/
+.vite/
+
+# Generated / vendored
+package-lock.json
+legacy/
+
+# Binary assets
+src/assets/images/
+
+# ── Application source is intentionally NOT formatted by Prettier ─────────────
+# The UI is written with dense, hand-aligned inline style objects. Running
+# Prettier across it would rewrite ~13k lines and destroy that alignment for no
+# functional gain, while burying every future diff in noise. Prettier owns the
+# config, docs and infrastructure files; ESLint owns correctness in src/.
+# Revisit if the styling layer ever moves to CSS modules or a token system.
+src/**/*.jsx
+src/**/*.js
+
+# Tooling configs use the same dense, comment-heavy style as the source and are
+# read far more often than they are edited.
+eslint.config.js
+vite.config.js
+tests/setup.js

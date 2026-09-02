@@ -1,0 +1,4 @@
+# Everything CI will check, run locally first so a red build is the exception.
+npm run lint
+npm run typecheck
+npm run test

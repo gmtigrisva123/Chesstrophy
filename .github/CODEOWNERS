@@ -1,0 +1,29 @@
+# Code owners are requested for review automatically on any PR touching their
+# paths. The last matching pattern wins, so order matters here.
+#
+# Replace the placeholder handles below with the real GitHub usernames or teams
+# once the maintainer list is settled.
+
+# Default owner for everything not matched more specifically.
+*                       @gmtigrisva123
+
+# Build, CI and repository configuration.
+/.github/               @gmtigrisva123
+/scripts/               @gmtigrisva123
+/vite.config.js         @gmtigrisva123
+/eslint.config.js       @gmtigrisva123
+/tsconfig.json          @gmtigrisva123
+/package.json           @gmtigrisva123
+
+# Chess correctness — engine, FEN/PGN handling and move validation. Changes here
+# affect every board in the app.
+/src/lib/chess/         @gmtigrisva123
+
+# Persistence and the economy ledger: the two places where a bug silently
+# corrupts a user's data rather than throwing.
+/src/lib/storage/       @gmtigrisva123
+/src/services/economy.js @gmtigrisva123
+
+# Documentation.
+/docs/                  @gmtigrisva123
+*.md                    @gmtigrisva123

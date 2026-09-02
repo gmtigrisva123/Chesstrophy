@@ -1,0 +1,41 @@
+name: Accessibility issue
+description: A barrier that makes ChessProphy hard or impossible to use.
+title: "[A11y]: "
+labels: ["accessibility", "needs triage"]
+body:
+  - type: textarea
+    id: barrier
+    attributes:
+      label: The barrier
+      description: What could you not do, and where?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: assistive-tech
+    attributes:
+      label: How you were using the app
+      multiple: true
+      options:
+        - Screen reader
+        - Keyboard only
+        - Screen magnification / zoom
+        - Reduced motion enabled
+        - High contrast mode
+        - Voice control
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: tooling
+    attributes:
+      label: Assistive technology and version
+      placeholder: VoiceOver on macOS 14.5, or NVDA 2024.2 on Windows 11
+
+  - type: input
+    id: wcag
+    attributes:
+      label: Related WCAG criterion
+      description: If you know it. Not required.
+      placeholder: 2.4.7 Focus Visible

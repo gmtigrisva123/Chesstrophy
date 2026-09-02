@@ -1,0 +1,55 @@
+name: Feature request
+description: Suggest something ChessProphy should be able to do.
+title: "[Feature]: "
+labels: ["enhancement", "needs triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is hard or impossible today? Describe the situation, not the solution.
+      placeholder: I cannot review the openings I got wrong without going through every variation again.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+      description: Including "do nothing" — knowing what you rejected and why is genuinely useful.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Dashboard
+        - Puzzles
+        - Openings / Opening Trainer
+        - Studies / Courses
+        - Learning Tree & AI
+        - ChessWiki
+        - Classic Games
+        - Prophy Store
+        - Profile / Settings
+        - Accessibility
+        - Performance
+        - Developer experience
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and discussions for this idea.
+          required: true

@@ -1,0 +1,311 @@
+# ═════════════════════════════════════════════════════════════════════════════
+# ChessProphy — .gitignore
+#
+# Scope: a Vite + React app with a Supabase backend, tested with Vitest and
+# deployed from GitHub Actions. Rules are kept to tooling this repository
+# actually uses, plus the OS/editor noise every checkout produces.
+#
+# Conventions used below:
+#   • A leading slash anchors a rule to the repository root, so a directory
+#     that legitimately shares the name deeper in the tree (say `src/.../build`)
+#     is never silently swallowed. Rules that must match at any depth
+#     (`node_modules/`, `.DS_Store`) deliberately have no slash.
+#   • A trailing slash matches directories only, so a file of the same name is
+#     still surfaced rather than quietly dropped.
+#   • Ignore rules are inert on paths Git already tracks. When a file keeps
+#     showing up despite a rule here, `git check-ignore -v <path>` names the
+#     line responsible, and `git rm --cached <path>` untracks it.
+# ═════════════════════════════════════════════════════════════════════════════
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+# Unanchored: transitive installs create nested `node_modules/` directories.
+node_modules/
+jspm_packages/
+bower_components/
+
+# Package-manager caches and local stores. `package-lock.json` is committed —
+# it is the reproducible-install contract this project's CI depends on.
+.npm/
+.pnpm-store/
+.pnp/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# `npm pack` output and the interactive-node scratch file.
+*.tgz
+.node_repl_history
+
+# NOTE: `.npmrc` is intentionally NOT ignored — when it exists it carries
+# registry settings the whole team needs. Keep auth tokens out of it and pass
+# them through the environment (`NODE_AUTH_TOKEN` in CI) instead, so the file
+# stays safe to commit.
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build output
+# ─────────────────────────────────────────────────────────────────────────────
+# `dist/` is produced by `npm run build` and published by the Pages workflow;
+# it is a build artefact in every environment and never belongs in a commit.
+/dist/
+/dist-ssr/
+/build/
+/out/
+/.vite/
+/.vite-inspect/
+*.tsbuildinfo
+
+# Vite rewrites the config to a temporary ESM bundle beside the original
+# whenever it reloads it, and only deletes it on a clean exit — a killed dev
+# server leaves one behind.
+vite.config.*.timestamp-*
+vitest.config.*.timestamp-*
+
+# Bundle-analyser output. `npm run analyze` reports to stdout, but visualiser
+# plugins default to writing this file into the project root.
+/stats.html
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Test & coverage output
+# ─────────────────────────────────────────────────────────────────────────────
+# Vitest writes coverage to `coverage/` (see vite.config.js). The Playwright
+# directories are listed ahead of the end-to-end suite planned in
+# docs/ROADMAP.md, so the first run cannot dirty a working tree.
+/coverage/
+/.nyc_output/
+/test-results/
+/playwright-report/
+/blob-report/
+/.vitest-cache/
+/junit.xml
+lcov.info
+
+# Playwright's per-machine browser cache, and any saved `storageState` — the
+# latter is a live session token in a JSON file, so it must never be committed.
+/playwright/.cache/
+/.auth/
+storageState*.json
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Logs & diagnostics
+# ─────────────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+# Node's crash reports: report.<pid>.<tid>.<seq>.<timestamp>.json
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+*.pid
+*.pid.lock
+*.seed
+
+# Linter caches — machine-local, and invalidated by any config change.
+.eslintcache
+.stylelintcache
+
+# Node/V8 profiling dumps, produced by `--cpu-prof`, `--heap-prof` and the
+# heap-snapshot API. Large, machine-specific, and never useful in history.
+*.heapsnapshot
+*.cpuprofile
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Environment & secrets — never commit these
+# ─────────────────────────────────────────────────────────────────────────────
+# Anything matching `.env*` is ignored, then the checked-in templates are
+# explicitly allowed back. Keep new variables documented in `.env.example`
+# (name and a comment, never a real value) so the list stays discoverable.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Private key material and credential dumps, in whatever form a tool emits.
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.keystore
+*.jks
+id_rsa*
+id_ed25519*
+secrets.json
+credentials.json
+service-account*.json
+.secrets/
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Editors & IDEs
+# ─────────────────────────────────────────────────────────────────────────────
+# VS Code: share the settings that make the repo behave identically for
+# everyone (formatter, recommended extensions, debug targets); ignore the rest,
+# which is per-developer state.
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# JetBrains, Vim, Sublime, Zed, and the VS Code "Local History" extension.
+.idea/
+*.iml
+*.sw[a-p]
+.*.sw[a-p]
+*~
+Session.vim
+.netrwhist
+.vscode-test/
+*.sublime-workspace
+*.sublime-project
+.zed/
+.fleet/
+.history/
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Operating systems
+# ─────────────────────────────────────────────────────────────────────────────
+# macOS. The `Icon` rule below carries two trailing carriage returns: the
+# Finder's custom-icon file is literally named "Icon\r", and Git strips one CR
+# from the end of every pattern line. Do not "clean up" that whitespace.
+.DS_Store
+.DS_Store?
+._*
+Icon
+
+.AppleDouble
+.LSOverride
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+Temporary Items
+Network Trash Folder
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tooling caches & deploy metadata
+# ─────────────────────────────────────────────────────────────────────────────
+.cache/
+.temp/
+.tmp/
+/tmp/
+*.local
+
+# direnv's materialised environment. `.envrc` itself may be committed; what it
+# builds into `.direnv/` is machine-local.
+.direnv/
+/.vercel/
+/.netlify/
+/.turbo/
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Git hooks & merge leftovers
+# ─────────────────────────────────────────────────────────────────────────────
+# Husky v9 splits the hook directory in two, and only one half is source:
+#
+#   .husky/pre-commit, .husky/pre-push  →  COMMITTED. These are the gate:
+#                                          lint-staged on commit, then
+#                                          lint + typecheck + test on push.
+#                                          Shared on purpose — a hook only a
+#                                          few machines have is not a gate.
+#   .husky/_/                           →  GENERATED. The runtime shims and
+#                                          husky.sh, rewritten wholesale by
+#                                          `npm run prepare` on every install.
+#
+# Husky writes its own `.husky/_/.gitignore` containing `*`, but that file only
+# exists once dependencies are installed and goes away with a `rm -rf`. Owning
+# the rule here means the generated half can never reach a commit, whatever
+# state `node_modules/` happens to be in.
+.husky/_/
+
+# Escape hatch for machine-specific hook overrides, so a developer can add a
+# personal step (a slower check, a local secret scan) without either editing
+# the shared hooks or leaving the working tree permanently dirty.
+.husky/*.local
+
+# Conflict and patch debris: `*.orig` is left by a failed merge, `*.rej` by a
+# `git apply` that could not place a hunk, `*.bak` by editors and sed -i.
+*.orig
+*.rej
+*.bak
+*.tmp
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Local data dumps
+# ─────────────────────────────────────────────────────────────────────────────
+# Ad-hoc database exports and scratch stores. NOTE the deliberate absence of a
+# `*.sql` rule — supabase/migrations/*.sql and supabase/seed.sql are the schema
+# source of truth and must stay tracked.
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+*.dump
+*.sql.gz
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Project-specific
+# ─────────────────────────────────────────────────────────────────────────────
+# `legacy/` holds the pre-split 12,773-line monolith. It is excluded from the
+# build (see eslint.config.js and tsconfig.json) but deliberately NOT ignored:
+# it is already tracked, and an ignore rule on a tracked path is silently
+# inert — which is worse than no rule at all. Its full history also lives in
+# commit d9130a7, so it can be deleted outright whenever the team is ready.
+
+# Agent tooling: share the launch config, keep personal settings and notes
+# local to the machine that wrote them.
+.claude/settings.local.json
+.claude/*.local.json
+.claude/local/
+CLAUDE.local.md
+.aider*
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Supabase
+# ─────────────────────────────────────────────────────────────────────────────
+# Local CLI scratch state: container volumes, temp files and the linked project
+# ref. The schema itself (migrations/, seed.sql, config.toml, tests/) IS
+# committed — it is the source of truth for every environment.
+supabase/.branches/
+supabase/.temp/
+supabase/.env
+supabase/logs/
+
+# Generated from the live schema by `npm run db:types`. Regenerate rather than
+# hand-edit; committing it would go stale the first time a migration lands.
+src/lib/supabase/database.types.ts
+

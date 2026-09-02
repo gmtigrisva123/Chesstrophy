@@ -1,0 +1,90 @@
+name: Bug report
+description: Something behaves differently from how it should.
+title: "[Bug]: "
+labels: ["bug", "needs triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file this. The two fields that matter most
+        are the reproduction steps and what you expected instead — with those, a
+        fix usually follows quickly.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened
+      description: A short description of the actual behaviour.
+      placeholder: The puzzle board did not update after I played the correct move.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps someone else can follow from a fresh browser profile.
+      value: |
+        1. Go to …
+        2. Click …
+        3. Observe …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Where in the app does this happen?
+      options:
+        - Dashboard
+        - Puzzles
+        - Openings / Opening Trainer
+        - Studies / Courses
+        - Learning Tree & AI
+        - ChessWiki
+        - Classic Games
+        - Prophy Store
+        - Profile / Settings
+        - Onboarding / Landing
+        - Other or not sure
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      description: The release tag, or `git rev-parse --short HEAD`.
+      placeholder: v1.0.0 or d9130a7
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and OS
+      placeholder: Chrome 128 on macOS 14.5
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: Anything logged to the browser console. Pasted text is easier to search than a screenshot.
+      render: text
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I can reproduce this on the latest `main`.

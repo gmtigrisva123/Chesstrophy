@@ -1,0 +1,47 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the changelog can be generated from the commit log.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # A tag must never ship something that does not pass the same gates a
+      # pull request does.
+      - name: Verify
+        run: npm run verify
+
+      - name: Package build output
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+          tar -czf "chessprophy-${VERSION}.tar.gz" -C dist .
+          echo "ARTIFACT=chessprophy-${VERSION}.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.ARTIFACT }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true

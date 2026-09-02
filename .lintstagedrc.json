@@ -1,0 +1,5 @@
+{
+  "$schema": "https://json.schemastore.org/lintstagedrc",
+  "*.{js,jsx}": ["eslint --max-warnings=0 --fix"],
+  "*.{json,md,yml,yaml,css}": ["prettier --write"]
+}
