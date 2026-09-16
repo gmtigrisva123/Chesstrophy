@@ -12,19 +12,32 @@ import { CHESS_CHECK, CHESS_CORRECT, CHESS_DARK_SQ, CHESS_INCORRECT, CHESS_LASTM
  * while this component kept re-deriving the *starting* FEN — so pieces never
  * visibly moved even though the puzzle was scored as solved.
  *
+ * Interaction follows the chess.com conventions: press a piece to select it
+ * and see its legal squares (a dot on an empty square, a ring on a capture),
+ * press a legal square to move, press the selected piece again to deselect,
+ * or drag the piece straight to its destination. The same pointer flow drives
+ * mouse and touch, so a tap on a phone selects exactly like a click does.
+ *
  * @param {object} props
  * @param {string} props.fen - Starting position, also the fallback when `board` is absent.
  * @param {(string|null)[]} [props.board] - Live 64-square position, index 0 = a8.
+ * @param {boolean} [props.flipped] - Show the board from Black's side.
+ * @param {(sq:number)=>boolean} [props.onPress] - Pointer went down on a square. Return
+ *   true when this started a drag (the square holds a piece the player may move).
+ * @param {(from:number,to:number)=>void} [props.onDrop] - Dragged piece released on `to`.
  */
-function PuzzleBoard({ fen, board: boardProp, selectedSq, legalSqs, lastFrom, lastTo, checkSq, onSquareClick, onDrop, size=52, feedback=null }) {
+function PuzzleBoard({ fen, board: boardProp, selectedSq, legalSqs, lastFrom, lastTo, checkSq, onSquareClick, onPress, onDrop, size=52, feedback=null, flipped=false }) {
   const derivedBoard = useMemo(() => fenBoard(fen), [fen]);
   const board = boardProp ?? derivedBoard;
 
   const LIGHT=CHESS_LIGHT_SQ, DARK_SQ=CHESS_DARK_SQ, SEL_L=CHESS_SELECT, SEL_D=CHESS_SELECT, LL=CHESS_LASTMOVE_L, LD=CHESS_LASTMOVE_D;
-  const files = ["a","b","c","d","e","f","g","h"];
-  const ranks = ["8","7","6","5","4","3","2","1"];
+  const files = flipped ? ["h","g","f","e","d","c","b","a"] : ["a","b","c","d","e","f","g","h"];
+  const ranks = flipped ? ["1","2","3","4","5","6","7","8"] : ["8","7","6","5","4","3","2","1"];
+  // Display index (top-left = 0) ↔ real square index (a8 = 0).
+  const toReal = useCallback((dSq) => flipped ? 63 - dSq : dSq, [flipped]);
   const boardRef = useRef(null);
-  const [drag, setDrag] = useState(null); // {sq, piece, x, y}
+  const [drag, setDrag] = useState(null); // {sq, piece, x, y, wasSelected}
+  const interactive = !!(onPress || onSquareClick);
 
   // Stable identity: the drag listeners below depend on it, and recreating it
   // every render would re-register them on every pointer move.
@@ -35,16 +48,20 @@ function PuzzleBoard({ fen, board: boardProp, selectedSq, legalSqs, lastFrom, la
     if (x < 0 || y < 0 || x > rect.width || y > rect.height) return -1;
     const dc = Math.floor(x / size), dr = Math.floor(y / size);
     if (dc < 0 || dc > 7 || dr < 0 || dr > 7) return -1;
-    return dr * 8 + dc;
-  }, [size]);
-  const startDrag = (e, sq) => {
-    if (!onDrop) return; // drag-and-drop is opt-in — click-to-move keeps working either way
-    const piece = board[sq];
-    if (!piece) return;
+    return toReal(dr * 8 + dc);
+  }, [size, toReal]);
+
+  // One entry point for mouse and touch. Selecting/moving happens on press so
+  // that touch (whose synthetic click we suppress) behaves exactly like mouse.
+  const handlePress = (e, sq) => {
+    if (e.button !== undefined && e.button !== 0) return; // right/middle click
+    if (!onPress) { onSquareClick && onSquareClick(sq); return; }
     e.preventDefault();
+    const wasSelected = sq === selectedSq;
+    const startedDrag = onPress(sq);
+    if (!startedDrag) return;
     const cx = e.touches ? e.touches[0].clientX : e.clientX, cy = e.touches ? e.touches[0].clientY : e.clientY;
-    onSquareClick && onSquareClick(sq); // reuse existing selection logic to compute legal squares
-    setDrag({ sq, piece, x: cx, y: cy });
+    setDrag({ sq, piece: board[sq], x: cx, y: cy, wasSelected });
   };
   useEffect(() => {
     if (!drag) return;
@@ -52,22 +69,27 @@ function PuzzleBoard({ fen, board: boardProp, selectedSq, legalSqs, lastFrom, la
     const up = (e) => {
       const cx = e.changedTouches ? e.changedTouches[0].clientX : e.clientX, cy = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
       const target = getSqFromPoint(cx, cy);
-      if (target >= 0 && target !== drag.sq) onDrop && onDrop(drag.sq, target);
+      // Released on the piece itself: a second press on an already-selected
+      // piece deselects it, a first press leaves it selected. Released
+      // anywhere else is a drop — the parent decides whether it is legal.
+      if (target === drag.sq) { if (drag.wasSelected) onSquareClick && onSquareClick(drag.sq); }
+      else onDrop && onDrop(drag.sq, target);
       setDrag(null);
     };
     window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up);
     window.addEventListener("touchmove", mv, { passive: false }); window.addEventListener("touchend", up);
     return () => { window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); window.removeEventListener("touchmove", mv); window.removeEventListener("touchend", up); };
-  }, [drag, onDrop, getSqFromPoint]);
+  }, [drag, onDrop, onSquareClick, getSqFromPoint]);
 
   return (
     <div style={{position:"relative",userSelect:"none"}}>
       <div style={{position:"absolute",left:-22,top:0,display:"flex",flexDirection:"column",height:size*8}}>
         {ranks.map(r=><div key={r} style={{height:size,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.62rem",fontWeight:700,color:"#888",fontFamily:"monospace",width:18}}>{r}</div>)}
       </div>
-      <div ref={boardRef} style={{display:"grid",gridTemplateColumns:`repeat(8,${size}px)`,gridTemplateRows:`repeat(8,${size}px)`,border:"2px solid #8B5E20",borderRadius:4,overflow:"hidden",boxShadow:"0 8px 30px rgba(0,0,0,0.5)"}}>
-        {Array.from({length:64},(_,sq)=>{
-          const [dr,dc]=[Math.floor(sq/8),sq%8];
+      <div ref={boardRef} style={{display:"grid",gridTemplateColumns:`repeat(8,${size}px)`,gridTemplateRows:`repeat(8,${size}px)`,border:"2px solid #8B5E20",borderRadius:4,overflow:"hidden",boxShadow:"0 8px 30px rgba(0,0,0,0.5)",touchAction:interactive?"none":"auto"}}>
+        {Array.from({length:64},(_,dSq)=>{
+          const sq=toReal(dSq);
+          const [dr,dc]=[Math.floor(dSq/8),dSq%8];
           const isLight=(dr+dc)%2===0;
           const isSel=sq===selectedSq, isLegal=legalSqs&&legalSqs.includes(sq);
           const isLF=sq===lastFrom, isLT=sq===lastTo, isChk=sq===checkSq;
@@ -80,14 +102,16 @@ function PuzzleBoard({ fen, board: boardProp, selectedSq, legalSqs, lastFrom, la
           else if(isLF||isLT)bg=isLight?LL:LD;
           const piece=board[sq];
           return (
-            <div key={sq} data-square={sq} style={{width:size,height:size,background:bg,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:piece&&onDrop?"grab":onSquareClick?"pointer":"default",transition:"background 0.08s"}}
-              onClick={()=>onSquareClick&&onSquareClick(sq)}
-              onMouseDown={e=>startDrag(e,sq)} onTouchStart={e=>startDrag(e,sq)}>
+            <div key={sq} data-square={sq} style={{width:size,height:size,background:bg,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:piece&&onPress?"grab":interactive?"pointer":"default",transition:"background 0.08s"}}
+              onMouseDown={interactive?e=>handlePress(e,sq):undefined}
+              onTouchStart={interactive?e=>handlePress(e,sq):undefined}>
               {isLegal&&(piece
-                ?<div style={{position:"absolute",inset:0,border:"3px solid rgba(0,0,0,0.28)",pointerEvents:"none",zIndex:2}}/>
-                :<div style={{width:size*0.3,height:size*0.3,borderRadius:"50%",background:"rgba(0,0,0,0.19)",pointerEvents:"none",zIndex:2}}/>
+                ?<div style={{position:"absolute",inset:0,borderRadius:"50%",border:`${Math.max(3,size*0.09)}px solid rgba(0,0,0,0.14)`,boxSizing:"border-box",pointerEvents:"none",zIndex:2}}/>
+                :<div style={{width:size*0.32,height:size*0.32,borderRadius:"50%",background:"rgba(0,0,0,0.14)",pointerEvents:"none",zIndex:2}}/>
               )}
               {piece&&!isDragSrc&&<div style={{zIndex:1}}><PzPiece piece={piece} size={size-4}/></div>}
+              {dc===0&&<span style={{position:"absolute",top:2,left:3,fontSize:Math.max(8,size*0.16),fontWeight:700,color:isLight?"#B07540":"#EAC989",lineHeight:1,pointerEvents:"none",zIndex:5}}>{ranks[dr]}</span>}
+              {dr===7&&<span style={{position:"absolute",bottom:1,right:3,fontSize:Math.max(8,size*0.16),fontWeight:700,color:isLight?"#B07540":"#EAC989",lineHeight:1,pointerEvents:"none",zIndex:5}}>{files[dc]}</span>}
             </div>
           );
         })}

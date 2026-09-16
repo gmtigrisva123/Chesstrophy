@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { DNARadar } from "./DNARadar.jsx";
-import { computeDNAScores, dnaLevel } from "./dnaScores.js";
+import { loadDNAHistory } from "../../services/dnaHistory.js";
+import { computeDNAScores, dnaLevel } from "../../services/dnaScores.js";
 
 // ── CHESS DNA FULL PAGE ────────────────────────────────────────────────────────
 // Presentational primitives kept at module scope. Declared inside the page they
@@ -38,16 +39,13 @@ function ChessDNAPage({ dark }) {
   const strengths = sorted.slice(0, 2);
   const weaknesses = sorted.slice(-2).reverse();
 
-  // Simulated weekly history (would come from real session logs)
-  const weekHistory = [
-    { day:"Mon", overall: Math.max(20, dna.overall - 8) },
-    { day:"Tue", overall: Math.max(20, dna.overall - 5) },
-    { day:"Wed", overall: Math.max(20, dna.overall - 6) },
-    { day:"Thu", overall: Math.max(20, dna.overall - 3) },
-    { day:"Fri", overall: Math.max(20, dna.overall - 2) },
-    { day:"Sat", overall: Math.max(20, dna.overall - 1) },
-    { day:"Today", overall: dna.overall },
-  ];
+  // Real history: one snapshot per day the score was computed (today's was
+  // just written by computeDNAScores); the rest are whatever earlier days logged.
+  const history = useMemo(() => loadDNAHistory().slice(-7), []);
+  const weekHistory = history.map((h, i) => ({
+    day: i === history.length - 1 ? "Today" : new Date(h.date).toLocaleDateString(undefined, { weekday: "short" }),
+    overall: h.overall,
+  }));
 
   const graphH = 80, graphW = 340;
   const scores  = weekHistory.map(d => d.overall);
@@ -104,9 +102,14 @@ function ChessDNAPage({ dark }) {
               ))}
             </div>
           </div>
-          {/* Weekly sparkline */}
+          {/* Weekly sparkline — only real daily snapshots, so it needs two days of data before it can draw a line */}
           <div style={{ flexShrink:0,minWidth:180 }}>
             <div style={{ fontSize:"0.72rem",color:muted,fontWeight:700,marginBottom:8 }}>Weekly Progress</div>
+            {scores.length < 2 ? (
+              <div style={{ background:dark?"#0a0a0a":"#f8f8f8",borderRadius:10,padding:"18px 14px",width:graphW,maxWidth:"100%",fontSize:"0.74rem",color:muted,lineHeight:1.6 }}>
+                Today&apos;s score is <strong style={{ color:PURPLE }}>{dna.overall}</strong>. Come back tomorrow — the trend line builds from one real snapshot per day.
+              </div>
+            ) : (
             <div style={{ background:dark?"#0a0a0a":"#f8f8f8",borderRadius:10,padding:"12px 10px" }}>
               <svg width={graphW} height={graphH} viewBox={`0 0 ${graphW} ${graphH}`}>
                 <defs>
@@ -124,9 +127,10 @@ function ChessDNAPage({ dark }) {
                 })}
               </svg>
               <div style={{ display:"flex",justifyContent:"space-between",fontSize:"0.6rem",color:muted,marginTop:4 }}>
-                {weekHistory.map(d=><span key={d.day}>{d.day}</span>)}
+                {weekHistory.map((d, i)=><span key={history[i].date}>{d.day}</span>)}
               </div>
             </div>
+            )}
           </div>
         </div>
       </div>
@@ -202,17 +206,22 @@ function ChessDNAPage({ dark }) {
           <div style={{ width:36,height:36,borderRadius:"50%",background:`linear-gradient(135deg,${PURPLE},#a78bfa)`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0,boxShadow:`0 0 12px ${PURPLE}44` }}>🧠</div>
           <div>
             <div style={{ fontWeight:700,fontSize:"0.88rem",color:fg,marginBottom:8 }}>AI Summary</div>
-            <p style={{ fontSize:"0.83rem",color:muted,lineHeight:1.7,marginBottom:12 }}>
-              Based on your activity, your strongest attribute is <strong style={{color:strengths[0].color}}>{strengths[0].label}</strong> ({strengths[0].score}/100), 
-              powered by your puzzle training. Your biggest growth opportunity is <strong style={{color:AMBER}}>{weaknesses[0].label}</strong> ({weaknesses[0].score}/100) — 
-              unlocking more nodes in the <strong style={{color:G}}>Endgame branch</strong> of the Learning Tree would have the highest impact this week.
-            </p>
+            {dna.overall === 0 ? (
+              <p style={{ fontSize:"0.83rem",color:muted,lineHeight:1.7,marginBottom:12 }}>
+                No training data yet. Your DNA is built only from what you actually do here — solve a few puzzles, finish a Daily Questions session or unlock a Learning Tree node and this summary will describe your real strengths and gaps.
+              </p>
+            ) : (
+              <p style={{ fontSize:"0.83rem",color:muted,lineHeight:1.7,marginBottom:12 }}>
+                Based on your activity, your strongest attribute is <strong style={{color:strengths[0].color}}>{strengths[0].label}</strong> ({strengths[0].score}/100).
+                Your biggest growth opportunity is <strong style={{color:AMBER}}>{weaknesses[0].label}</strong> ({weaknesses[0].score}/100) — {weaknesses[0].explain}
+              </p>
+            )}
             <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:8 }}>
               {[
                 { icon:"🧩", label:"Practice puzzles daily",    color:G      },
-                { icon:"🌳", label:"Unlock Endgame branch",     color:PURPLE },
                 { icon:"📊", label:"Complete Daily Questions",  color:BLUE   },
-                { icon:"♔",  label:"Study King & Pawn endings", color:GOLD   },
+                { icon:"🌳", label:`Train ${weaknesses[0].label} in the Learning Tree`, color:PURPLE },
+                { icon:weaknesses[1].icon, label:`Then work on ${weaknesses[1].label}`, color:GOLD },
               ].map(r=>(
                 <div key={r.label} style={{ display:"flex",gap:7,alignItems:"center",padding:"8px 10px",background:dark?"#141414":"#f5f5f5",borderRadius:9 }}>
                   <span style={{fontSize:14}}>{r.icon}</span>

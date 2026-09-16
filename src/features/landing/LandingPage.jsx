@@ -1,3 +1,7 @@
+import { ALL_GAMES } from "../../data/classicGames.js";
+import { OPENING_REPERTOIRE } from "../../data/openingRepertoire.js";
+import { PUZZLE_DB } from "../../data/puzzles.js";
+import { STUDIES_DATA } from "../../data/studies.js";
 import { loadAdminData } from "../../services/adminData.js";
 
 // ── APP ───────────────────────────────────────────────────────────────────────
@@ -19,8 +23,15 @@ function LandingPage({ onEnter }) {
   const G = s.primaryColor || "#2563EB";
   const GOLD = s.accentColor || "#C9A84C";
   const features = hp.features || [];
-  const stats = hp.stats || [];
-  const testimonials = hp.testimonials || [];
+  // Real numbers from the catalogue that actually ships with the app. There is
+  // no member count or "puzzles solved" total here because nothing measures
+  // those yet — better to show four true figures than one invented one.
+  const stats = [
+    { id: "puzzles",  label: "Puzzles",       value: PUZZLE_DB.length.toLocaleString() },
+    { id: "openings", label: "Openings",      value: OPENING_REPERTOIRE.length.toLocaleString() },
+    { id: "courses",  label: "Courses",       value: STUDIES_DATA.reduce((n, c) => n + c.items.length, 0).toLocaleString() },
+    { id: "games",    label: "Classic Games", value: ALL_GAMES.length.toLocaleString() },
+  ];
   const socials = [
     { label: "Discord", url: s.discordUrl, icon: "💬" },
     { label: "YouTube", url: s.youtubeUrl, icon: "▶" },
@@ -69,18 +80,16 @@ function LandingPage({ onEnter }) {
       </div>
 
       {/* Stats */}
-      {stats.length > 0 && (
-        <div className="lp-fade" style={{ borderTop: "1px solid #1a1a1a", borderBottom: "1px solid #1a1a1a", padding: "36px clamp(20px,5vw,64px)" }}>
-          <div style={{ display: "flex", justifyContent: "center", gap: "clamp(28px,6vw,72px)", flexWrap: "wrap", maxWidth: 1000, margin: "0 auto" }}>
-            {stats.map(st => (
-              <div key={st.id} style={{ textAlign: "center" }}>
-                <div style={{ fontFamily: "Georgia,serif", fontSize: "1.8rem", fontWeight: 700, color: GOLD }}>{st.value}</div>
-                <div style={{ fontSize: "0.76rem", color: "#888", marginTop: 4 }}>{st.label}</div>
-              </div>
-            ))}
-          </div>
+      <div className="lp-fade" style={{ borderTop: "1px solid #1a1a1a", borderBottom: "1px solid #1a1a1a", padding: "36px clamp(20px,5vw,64px)" }}>
+        <div style={{ display: "flex", justifyContent: "center", gap: "clamp(28px,6vw,72px)", flexWrap: "wrap", maxWidth: 1000, margin: "0 auto" }}>
+          {stats.map(st => (
+            <div key={st.id} style={{ textAlign: "center" }}>
+              <div style={{ fontFamily: "Georgia,serif", fontSize: "1.8rem", fontWeight: 700, color: GOLD }}>{st.value}</div>
+              <div style={{ fontSize: "0.76rem", color: "#888", marginTop: 4 }}>{st.label}</div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* Features */}
       {features.length > 0 && (
@@ -99,24 +108,6 @@ function LandingPage({ onEnter }) {
                 <div style={{ fontSize: "0.85rem", color: "#999", lineHeight: 1.65 }}>{f.desc}</div>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Testimonials */}
-      {testimonials.length > 0 && (
-        <div className="lp-fade" style={{ background: "#0d0d0d", padding: "80px clamp(20px,5vw,64px)", borderTop: "1px solid #1a1a1a" }}>
-          <div style={{ maxWidth: 900, margin: "0 auto" }}>
-            <h2 style={{ fontFamily: "Georgia,serif", fontSize: "1.7rem", fontWeight: 700, textAlign: "center", marginBottom: 40 }}>What players are saying</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
-              {testimonials.map(t => (
-                <div key={t.id} style={{ background: "#111", border: "1px solid #1f1f1f", borderRadius: 16, padding: 26 }}>
-                  <div style={{ fontSize: "1.3rem", color: GOLD, marginBottom: 12 }}>&quot;</div>
-                  <p style={{ fontSize: "0.9rem", color: "#ddd", lineHeight: 1.7, marginBottom: 16, fontStyle: "italic" }}>{t.quote}</p>
-                  <div style={{ fontSize: "0.78rem", color: "#888", fontWeight: 600 }}>{t.author}</div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       )}

@@ -98,10 +98,17 @@ function applySimpleMove(board, from, to) {
   }
   return b;
 }
-// Check if a FEN move matches the solution token
-function movesMatch(from, to, solToken) {
+/**
+ * Whether a played move matches a solution token such as "e2e4" or "e7e8q".
+ * A token that names a promotion piece must be matched exactly — under-
+ * promoting when the solution queens is a wrong answer; a token without one
+ * accepts any promotion.
+ */
+function movesMatch(from, to, solToken, promo) {
   const f=sqName(from), t=sqName(to);
-  return solToken.startsWith(f+t);
+  if (!solToken.startsWith(f+t)) return false;
+  const wanted = solToken.slice(4, 5);
+  return !wanted || !promo || wanted.toLowerCase() === promo.toLowerCase();
 }
 
 export {

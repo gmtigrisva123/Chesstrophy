@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MASCOT_IMG } from "../../assets/mascot.js";
+import { PromotionDialog } from "../../components/chess/PromotionDialog.jsx";
 import { PuzzleBoard } from "../../components/chess/PuzzleBoard.jsx";
 import { useBoardSize } from "../../hooks/useBoardSize.js";
-import { applySimpleMove, fenBoard, movesMatch, nameToSq } from "../../lib/chess/fen.js";
+import { createChess } from "../../lib/chess/engine.js";
+import { applySimpleMove, movesMatch, parseSquarePairMove } from "../../lib/chess/fen.js";
+import { playBoardSound } from "../../lib/chess/sound.js";
 import { calcRatingChange, ratingToDifficulty } from "../../services/puzzleProgress.js";
 
 // ── Individual Puzzle Solver ──────────────────────────────────────────────────
@@ -13,10 +16,16 @@ function PuzzleSolver({ puzzle, pzState, onComplete, onBack, dark, puzzleList = 
   const card=dark?"#0f0f0f":"#fff";
   const border=dark?"#1e1e1e":"#e8e8e8";
 
-  // The starting position never changes for a given puzzle; the live position
-  // lives in `board` below and is what actually gets rendered.
+  // The starting position never changes for a given puzzle. The live position
+  // is owned by a real engine instance so the board only ever offers — and
+  // accepts — genuinely legal moves: the same move generator every other board
+  // on the site uses, with castling, en passant, promotion and check all
+  // handled. (An earlier version marked every square not occupied by your own
+  // piece as a "legal" destination, so selecting a piece lit up the whole
+  // board and the bishop could move like a knight.)
   const fen = puzzle.fen;
-  const [board, setBoard] = useState(()=>fenBoard(puzzle.fen));
+  const [chess] = useState(() => createChess(puzzle.fen));
+  const [board, setBoard] = useState(() => chess.getBoard());
   const [selSq, setSelSq] = useState(null);
   const [legalSqs, setLegalSqs] = useState([]);
   const [moveIdx, setMoveIdx] = useState(0);
@@ -28,57 +37,86 @@ function PuzzleSolver({ puzzle, pzState, onComplete, onBack, dark, puzzleList = 
   const [wrongCount, setWrongCount] = useState(0);
   const [ratingDelta, setRatingDelta] = useState(null);
   const [flash, setFlash]     = useState(null); // "green"|"red"
+  const [promotion, setPromotion] = useState(null); // {from,to} awaiting a piece choice
+  const [reverting, setReverting] = useState(false); // a wrong move is on the board, about to snap back
+  const timersRef = useRef([]);
+  const later = (fn, ms) => { timersRef.current.push(setTimeout(fn, ms)); };
+  useEffect(() => () => timersRef.current.forEach(clearTimeout), []);
 
   const solution = puzzle.solution;
   // Side to move is fixed for the whole puzzle: the player always plays the
   // puzzle's colour and the opponent's replies are auto-played from `solution`.
   const turn = fen.split(" ")[1]; // "w" or "b"
+  const kingSq = (b, color) => b.findIndex(pc => pc === (color === "w" ? "K" : "k"));
+  const checkSq = chess.isInCheck() ? kingSq(board, chess.getTurn()) : null;
 
-  // Simple legal destination squares (just any non-own-piece square for UX)
-  const getSimpleLegal = (sq) => {
-    const piece = board[sq];
-    if (!piece) return [];
-    const isWhite = piece===piece.toUpperCase();
-    if ((turn==="w"&&!isWhite)||(turn==="b"&&isWhite)) return [];
-    // Return all squares not occupied by same colour (simplified for puzzle UX)
-    const dests = [];
-    for (let i=0;i<64;i++) {
-      const target=board[i];
-      if (i===sq) continue;
-      const targetIsWhite = target&&target===target.toUpperCase();
-      if (target && ((isWhite&&targetIsWhite)||(!isWhite&&!targetIsWhite))) continue;
-      dests.push(i);
-    }
-    return dests;
+  const syncBoard = () => setBoard(chess.getBoard());
+  const clearSel = () => { setSelSq(null); setLegalSqs([]); };
+  // Only the player's own pieces, and only while it is actually their move.
+  const inputLocked = status === "done" || status === "correct" || reverting || !!promotion || chess.getTurn() !== turn;
+  const getLegal = (sq) => (inputLocked ? [] : chess.legalMoves(sq));
+  const select = (sq) => {
+    const legal = getLegal(sq);
+    if (!legal.length) return false;
+    setSelSq(sq); setLegalSqs(legal.map(m => m.to));
+    return true;
   };
 
-  const handleSquareClick = (sq) => {
-    if (status==="done" || status==="correct") return;
-    if (selSq===null) {
-      const legal=getSimpleLegal(sq);
-      if (legal.length) { setSelSq(sq); setLegalSqs(legal); }
-    } else {
-      if (sq===selSq) { setSelSq(null); setLegalSqs([]); return; }
-      if (legalSqs.includes(sq)) {
-        attemptMove(selSq, sq);
-        setSelSq(null); setLegalSqs([]);
-      } else {
-        const legal=getSimpleLegal(sq);
-        if (legal.length) { setSelSq(sq); setLegalSqs(legal); }
-        else { setSelSq(null); setLegalSqs([]); }
-      }
-    }
+  // Pointer went down on a square: select a movable piece (and start a drag),
+  // move to a legal destination, or clear the selection — chess.com's flow.
+  const handlePress = (sq) => {
+    if (inputLocked) return false;
+    if (selSq !== null && sq !== selSq && legalSqs.includes(sq)) { tryMove(selSq, sq); return false; }
+    if (select(sq)) return true;
+    clearSel();
+    return false;
+  };
+  // Pressing the already-selected piece again deselects it (via PuzzleBoard).
+  const handleSquareClick = (sq) => { if (sq === selSq) clearSel(); };
+  const handleDrop = (from, to) => {
+    if (inputLocked) return;
+    if (legalSqs.includes(to)) tryMove(from, to);
+    else clearSel();
   };
 
-  const attemptMove = (from, to) => {
+  const tryMove = (from, to, promo) => {
+    const candidates = chess.legalMoves(from).filter(m => m.to === to);
+    if (!candidates.length) { clearSel(); return; }
+    if (candidates[0].promo && !promo) { setPromotion({ from, to }); return; }
+    clearSel();
+    attemptMove(from, to, promo);
+  };
+
+  // Play the opponent's scripted reply from `solution`. The catalogue is
+  // validated against the engine, but a typo in a future puzzle must not brick
+  // the solver, so an illegal scripted reply is applied by hand and reported.
+  const playScripted = (token) => {
+    const { from, to, promo } = parseSquarePairMove(token);
+    const mv = chess.move(from, to, promo);
+    if (!mv) {
+      console.error(`[puzzle ${puzzle.id}] scripted reply ${token} is not legal in ${chess.getFen()}`);
+      const st = chess.parseFen(chess.getFen());
+      st.board = applySimpleMove(st.board, from, to);
+      st.turn = st.turn === "w" ? "b" : "w";
+      chess.loadFen(chess.toFen(st));
+    }
+    setLastFrom(from); setLastTo(to);
+    syncBoard();
+    return mv;
+  };
+
+  const attemptMove = (from, to, promo) => {
     const expected = solution[moveIdx];
-    if (movesMatch(from, to, expected)) {
+    const mv = chess.move(from, to, promo);
+    if (!mv) return; // cannot happen — the board only offers legal squares
+    setLastFrom(from); setLastTo(to);
+    syncBoard();
+    if (movesMatch(from, to, expected, mv.promo)) {
       // Correct move
-      const newBoard = applySimpleMove(board, from, to);
-      setBoard(newBoard); setLastFrom(from); setLastTo(to);
       setFlash("green");
-      setTimeout(()=>setFlash(null),600);
-      const nextIdx = moveIdx+1;
+      later(() => setFlash(null), 600);
+      playBoardSound(chess.isInCheck() ? "check" : (mv.captured ? "capture" : "move"));
+      const nextIdx = moveIdx + 1;
       setMoveIdx(nextIdx);
 
       if (nextIdx >= solution.length) {
@@ -89,21 +127,17 @@ function PuzzleSolver({ puzzle, pzState, onComplete, onBack, dark, puzzleList = 
       } else {
         // Auto-play opponent's next move if any
         setStatus("correct");
-        setTimeout(()=>{
+        later(() => {
           const oppMove = solution[nextIdx];
           if (oppMove) {
-            const oppFrom=nameToSq(oppMove.slice(0,2)), oppTo=nameToSq(oppMove.slice(2,4));
-            const b2=applySimpleMove(newBoard,oppFrom,oppTo);
-            setBoard(b2); setLastFrom(oppFrom); setLastTo(oppTo);
-            const afterOpp = nextIdx+1;
+            const reply = playScripted(oppMove);
+            playBoardSound(chess.isInCheck() ? "check" : (reply?.captured ? "capture" : "move"));
+            const afterOpp = nextIdx + 1;
             setMoveIdx(afterOpp);
-            // BUG FIX: a puzzle whose solution ends on the opponent's move (an
-            // even ply count — e.g. "potd": ["d1e2","e8g8"]) used to sit here
-            // forever at status "idle" once the auto-played reply landed on the
-            // final ply — the completion check only ever ran for the player's
-            // OWN move, never after this auto-play. That puzzle, and every
-            // other 2-move (or other even-length) puzzle, could never be
-            // marked solved or award rating. Same completion check, applied here too.
+            // A puzzle whose solution ends on the opponent's move (an even ply
+            // count — e.g. "potd": ["d1e2","e8g8"]) completes here: the
+            // completion check must run after the auto-played reply too, not
+            // only after the player's own move.
             if (afterOpp >= solution.length) {
               const delta = calcRatingChange(pzState.puzzleRating, puzzle.rating, true, hintUsed);
               setRatingDelta(delta);
@@ -112,22 +146,34 @@ function PuzzleSolver({ puzzle, pzState, onComplete, onBack, dark, puzzleList = 
               setStatus("idle");
             }
           }
-        },600);
+        }, 600);
       }
     } else {
-      // Wrong move
-      setWrongCount(c=>c+1);
+      // Wrong move: show it for a moment, then snap the piece back.
+      setWrongCount(c => c + 1);
       setFlash("red");
-      setTimeout(()=>setFlash(null),600);
-      setStatus("wrong");
+      setReverting(true);
+      playBoardSound("illegal");
+      later(() => {
+        chess.undo();
+        syncBoard();
+        setLastFrom(null); setLastTo(null);
+        setFlash(null);
+        setReverting(false);
+        setStatus("wrong");
+      }, 650);
     }
   };
 
+  // Hint: highlight the piece that has to move and its legal squares, exactly
+  // as if the player had selected it.
   const showHint = () => {
     const expected = solution[moveIdx];
     const from = expected.slice(0,2);
-    setHintText(`Move a piece from ${from.toUpperCase()}`);
+    setHintText(`Move the piece on ${from.toUpperCase()}`);
     setHintUsed(true);
+    if (status === "wrong") setStatus("idle");
+    select(parseSquarePairMove(expected).from);
   };
 
   const handleComplete = (success) => {
@@ -188,12 +234,15 @@ function PuzzleSolver({ puzzle, pzState, onComplete, onBack, dark, puzzleList = 
             <PuzzleBoard
               fen={fen} board={board}
               selectedSq={selSq} legalSqs={legalSqs}
-              lastFrom={lastFrom} lastTo={lastTo}
+              lastFrom={lastFrom} lastTo={lastTo} checkSq={checkSq}
+              flipped={turn==="b"}
               onSquareClick={status!=="done"?handleSquareClick:null}
-              onDrop={status!=="done"&&status!=="correct"?(from,to)=>{ if(getSimpleLegal(from).includes(to)){ attemptMove(from,to); setSelSq(null); setLegalSqs([]); } }:null}
+              onPress={status!=="done"?handlePress:null}
+              onDrop={status!=="done"?handleDrop:null}
               size={SQ}
             />
           </div>
+          {promotion && <PromotionDialog color={turn} onSelect={p=>{ const {from,to}=promotion; setPromotion(null); clearSel(); attemptMove(from,to,p); }}/>}
           {/* Hint */}
           <div style={{display:"flex",gap:8,marginTop:14,paddingLeft:24}}>
             <button onClick={showHint} disabled={hintUsed||status==="done"} style={{
@@ -254,7 +303,7 @@ function PuzzleSolver({ puzzle, pzState, onComplete, onBack, dark, puzzleList = 
             <div style={{background:`${G}12`,border:`1px solid ${G}33`,borderRadius:14,padding:"20px 18px",marginBottom:14,animation:"pzFade 0.2s ease"}}>
               <div style={{fontWeight:700,fontSize:"1rem",color:G,marginBottom:4}}>✓ Puzzle Solved!</div>
               <div style={{fontSize:"0.8rem",color:muted,marginBottom:12}}>
-                {hintUsed?"Great job! (hint used)":"Perfect solution!"}
+                {hintUsed ? "Great job! (hint used)" : wrongCount > 0 ? `Solved after ${wrongCount} wrong attempt${wrongCount === 1 ? "" : "s"}.` : "Perfect solution!"}
               </div>
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
                 <span style={{fontSize:"1.4rem",fontWeight:800,color:ratingDelta>=0?G:"#ef4444"}}>

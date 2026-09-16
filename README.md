@@ -168,6 +168,38 @@ What the backend adds that a browser cannot:
 [`supabase/README.md`](supabase/README.md) covers the schema, the security
 model, the server-side rules and the deployment checklist.
 
+## Admin panel
+
+Open **`/#/admin`** (there is no link for ordinary visitors; once you are
+signed in an "Admin panel" entry appears at the bottom of the sidebar). It is a
+separate shell in [`src/features/admin/`](src/features/admin/), loaded only when
+that route is visited.
+
+**Who gets in** depends on whether a backend is configured:
+
+| Mode   | When                                 | Gate                                                                                                                                                                                                                                                              |
+| ------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Remote | Supabase env vars are set            | Sign in with the account that holds `admin` or `moderator` in `public.user_roles`. Roles are granted only in the database ([`supabase/README.md`](supabase/README.md) → _Grant yourself admin_), and every catalogue table's RLS re-checks `is_admin()` on write. |
+| Local  | No backend (the local-first default) | A passcode you create on first visit, stored as a salted SHA-256 hash in the browser, with a lockout after five failed attempts. This protects the screens, not the data — everything already lives in that browser.                                              |
+
+**What it manages** — every section of the content store, through one
+schema-driven editor ([`adminSchemas.js`](src/features/admin/adminSchemas.js)):
+news, events, announcements, custom puzzles (solutions are played through the
+engine before they can be saved, and FENs render a live board), store items,
+community studies and openings, courses, lessons, resources, the AI placement
+quiz, wiki categories and articles. Plus:
+
+- **Moderation** — the ChessFlix review queue, posting policy, and community games.
+- **Site settings** — identity, landing page copy and features, social links,
+  SEO, maintenance mode, the dashboard banner and section order.
+- **Economy** — reward amounts per activity, and an audited wallet adjustment.
+- **Users** — member directory in remote mode; this device's learner locally.
+- **Activity log** — who changed what, when (last 500 actions, exportable).
+- **Data & security** — JSON backup/restore, factory reset, passcode change.
+
+`⌘K` / `Ctrl+K` opens a command palette that jumps to any section, creates a
+record, or finds one by title. Edits apply to every open page instantly.
+
 ## Performance
 
 The initial download is budgeted and enforced in CI by

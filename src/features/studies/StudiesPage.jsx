@@ -4,7 +4,7 @@ import { LevelBadge } from "../../components/ui/LevelBadge.jsx";
 import { SectionHeader } from "../../components/ui/SectionHeader.jsx";
 import { STUDIES_DATA } from "../../data/studies.js";
 import { loadAdminData } from "../../services/adminData.js";
-import { getCourseState } from "../../services/courseProgress.js";
+import { getCoursePercent, getCourseState } from "../../services/courseProgress.js";
 import { CourseViewer } from "../courses/CourseViewer.jsx";
 
 function StudiesPage({ dark, setActive }) {
@@ -31,7 +31,10 @@ function StudiesPage({ dark, setActive }) {
               <span style={{ fontWeight: 700, fontSize: "0.95rem", color: fg }}>{cat.category}</span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: 14 }}>
-              {cat.items.map(item => (
+              {cat.items.map(item => {
+                // Real progress: furthest chapter reached / course completed, never a canned number.
+                const progress = getCoursePercent(item);
+                return (
                 <div key={item.title} style={{ background: card, border: "1px solid " + border, borderRadius: 14, padding: 22 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                     <span style={{ fontWeight: 700, fontSize: "0.9rem", color: fg, lineHeight: 1.3 }}>{item.title}</span>
@@ -39,24 +42,25 @@ function StudiesPage({ dark, setActive }) {
                   </div>
                   <p style={{ fontSize: "0.8rem", color: muted, lineHeight: 1.6, marginBottom: 16 }}>{item.desc}</p>
                   <div style={{ marginBottom: 12 }}>
-                    <LabeledProgressBar label="Progress" percent={item.progress} color={cat.color} dark={dark} />
+                    <LabeledProgressBar label="Progress" percent={progress} color={cat.color} dark={dark} />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: "0.72rem", color: muted }}>{item.lessons} lessons</span>
                     <button
                       onClick={() => setOpenCourse({ ...item, category: cat.category, color: cat.color })}
                       style={{
-                        background: item.progress === 100 ? "#4ade8022" : cat.color + "22",
-                        border: "1px solid " + (item.progress === 100 ? "#4ade8055" : cat.color + "55"),
-                        color: item.progress === 100 ? "#4ade80" : cat.color,
+                        background: progress === 100 ? "#4ade8022" : cat.color + "22",
+                        border: "1px solid " + (progress === 100 ? "#4ade8055" : cat.color + "55"),
+                        color: progress === 100 ? "#4ade80" : cat.color,
                         borderRadius: 8, padding: "7px 16px",
                         fontWeight: 700, fontSize: "0.78rem", cursor: "pointer",
                       }}>
-                      {item.progress === 0 ? "Start" : item.progress === 100 ? "Complete" : "Continue"}
+                      {progress === 0 ? "Start" : progress === 100 ? "Complete" : "Continue"}
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ))}

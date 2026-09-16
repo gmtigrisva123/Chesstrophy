@@ -1,4 +1,5 @@
 import { loadAdminData } from "./adminData.js";
+import { loadEconomy } from "./economy.js";
 import { STUDIES_DATA } from "../data/studies.js";
 import { readJson, writeJson } from "../lib/storage/jsonStore.js";
 
@@ -47,10 +48,21 @@ function getMostRecentCourse() {
   }
   if (!course) return null;
 
+  return { course, pct: getCoursePercent(course, state) };
+}
+
+// Real completion percentage for a course card — the furthest chapter the
+// user has actually reached, as a share of the chapters that exist. A course
+// that has never been opened is 0%; finishing the Practice checklist pays the
+// course_complete reward (see CoursePracticeTab), and that ledger entry is
+// what marks it 100%.
+function getCoursePercent(course, state = getCourseState(course.id)) {
+  if (loadEconomy().completedRewards?.[`course_complete:${course.id}`]) return 100;
+  if (!state.updatedAt) return 0;
   const content = getCourseContent(course);
   const chapterCount = content.chapters?.length || 1;
   const pct = Math.round(((Math.min(state.furthest || 0, chapterCount - 1) + 1) / chapterCount) * 100);
-  return { course, pct: Math.min(100, pct) };
+  return Math.min(100, pct);
 }
 
 function getCourseContent(course) {
@@ -86,5 +98,6 @@ export {
   getCourseState,
   patchCourseState,
   getMostRecentCourse,
+  getCoursePercent,
   getCourseContent,
 };

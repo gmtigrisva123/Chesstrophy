@@ -31,14 +31,28 @@ const ProphyStudioComingSoon = lazy(() => import("../features/studio/ProphyStudi
 const PuzzlesPage            = lazy(() => import("../features/puzzles/PuzzlesPage.jsx").then(m => ({ default: m.PuzzlesPage })));
 const StudiesPage            = lazy(() => import("../features/studies/StudiesPage.jsx").then(m => ({ default: m.StudiesPage })));
 const WikiPage               = lazy(() => import("../features/wiki/WikiPage.jsx").then(m => ({ default: m.WikiPage })));
+// The admin panel is a separate shell behind #/admin. It is only ever loaded
+// when that hash is present, so learners never download it.
+const AdminApp               = lazy(() => import("../features/admin/AdminApp.jsx").then(m => ({ default: m.AdminApp })));
+
+const isAdminHash = () => typeof window !== "undefined" && /^#\/admin(\/|$)/.test(window.location.hash);
 
 function ChessProphyApp() {
   const { themeMode, dark, setThemeMode } = useThemeMode();
   const [active, setActive]           = useState("Home");
   const [mobileOpen, setMobileOpen]   = useState(false);
 
+  // #/admin opens the admin panel instead of the learner app. Checked before
+  // maintenance mode so an admin can always get in to switch it back off.
+  const [adminRoute, setAdminRoute] = useState(isAdminHash);
+  useEffect(() => {
+    const onHash = () => setAdminRoute(isAdminHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
   // Landing page — shown once before a visitor enters the app proper, driven
-  // by the same Homepage CMS data the Admin Portal already writes.
+  // by the homepage settings the admin panel edits.
   const [showLanding, setShowLanding] = useState(() => !loadProfile().hasSeenLanding);
   const enterApp = () => { const p = loadProfile(); saveProfile({ ...p, hasSeenLanding: true }); setShowLanding(false); };
 
@@ -61,14 +75,12 @@ function ChessProphyApp() {
   };
 
   // Re-render the whole app the instant an admin edit is saved, so every
-  // already-open page (not just the Admin Portal) reflects it immediately
-  // instead of only updating after a navigation away and back.
+  // already-open page reflects it immediately instead of only updating after
+  // a navigation away and back.
   const [, forceRerenderOnAdminChange] = useState(0);
   useEffect(() => subscribeAdminDataChanged(() => forceRerenderOnAdminChange(v => v + 1)), []);
 
-  // Site identity + maintenance mode — this data still lives in the same
-  // content store the (now-removed) Admin Portal used to write to; there's
-  // just no admin UI left to edit it, so it stays whatever it's currently set to.
+  // Site identity + maintenance mode, edited in the admin panel (Site settings).
   const siteSettings = loadAdminData().settings || {};
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -76,6 +88,15 @@ function ChessProphyApp() {
     }
   }, [siteSettings.seoTitle, siteSettings.siteName]);
 
+  if (adminRoute) {
+    return (
+      <ErrorBoundary dark={dark} onReset={() => { window.location.hash = ""; }}>
+        <Suspense fallback={<PageFallback dark={dark} />}>
+          <AdminApp dark={dark} setThemeMode={setThemeMode} />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
   if (siteSettings.maintenanceMode) {
     return <MaintenanceScreen />;
   }
@@ -92,7 +113,7 @@ function ChessProphyApp() {
     switch (active) {
       case "Home":          return <Dashboard        dark={dark} setActive={setActive} />;
       case "Puzzles":       return <PuzzlesPage       dark={dark} />;
-      case "LearningTree":  return <LearningTreePage  dark={dark} />;
+      case "LearningTree":  return <LearningTreePage  dark={dark} setActive={setActive} />;
       case "ChessDNA":      return <ChessDNAPage      dark={dark} />;
       case "News":          return <NewsPage          dark={dark} />;
       case "Events":        return <EventsPage        dark={dark} />;

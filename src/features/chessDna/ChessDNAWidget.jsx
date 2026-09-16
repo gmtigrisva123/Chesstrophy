@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { computeDNAScores, dnaLevel } from "./dnaScores.js";
+import { computeDNAScores, dnaLevel } from "../../services/dnaScores.js";
 
 // ── CHESS DNA WIDGET (Dashboard) ─────────────────────────────────────────────
 function ChessDNAWidget({ dark, fg, muted, onExpand }) {

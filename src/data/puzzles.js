@@ -49,10 +49,12 @@ const PUZZLE_DB = [
   },
   {
     id:"p2", title:"Smothered Mate", rating:1350,
-    fen:"6rk/6pp/8/8/8/8/6PP/5NRK w - - 0 1",
-    solution:["f1h2","h8g8","h2f3","g8h8","f3g5","h8g8","g5f7"],
+    // Philidor's Legacy: the queen is given up on g8 so the rook blocks the
+    // king's last flight square, then the knight mates.
+    fen:"r4r1k/pp4pp/7N/8/8/1Q6/PP4PP/6K1 w - - 0 1",
+    solution:["b3g8","f8g8","h6f7"],
     theme:"Smothered Mate",
-    desc:"A classic smothered mate pattern. White to move and deliver checkmate.",
+    desc:"A classic smothered mate pattern. White to move and force checkmate in two.",
     tags:["checkmate","knight"],
   },
   {
@@ -65,10 +67,12 @@ const PUZZLE_DB = [
   },
   {
     id:"p4", title:"Zugzwang", rating:1600,
-    fen:"8/8/8/8/8/1k6/2p5/2K5 b - - 0 1",
-    solution:["b3b2","c1d2","c2c1q"],
+    // The white king has exactly one legal square after ...e2; the black king
+    // then takes the queening square's neighbour and the pawn walks in.
+    fen:"8/8/8/8/8/3kp3/8/4K3 b - - 0 1",
+    solution:["e3e2","e1f2","d3d2","f2g3","e2e1q"],
     theme:"Pawn Promotion",
-    desc:"Black must find the correct order to promote and win.",
+    desc:"Black to move. Use zugzwang to push the white king away from the queening square, then promote.",
     tags:["endgame","promotion"],
   },
   {

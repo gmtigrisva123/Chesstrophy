@@ -82,7 +82,15 @@ describe("movesMatch", () => {
     expect(movesMatch(nameToSq("d1"), nameToSq("e3"), "d1e2")).toBe(false);
   });
 
-  it("matches a promotion token by its squares alone", () => {
+  it("matches a promotion token by its squares when no piece is given", () => {
     expect(movesMatch(nameToSq("c2"), nameToSq("c1"), "c2c1q")).toBe(true);
+  });
+
+  it("requires the promotion piece to match when the token names one", () => {
+    expect(movesMatch(nameToSq("c2"), nameToSq("c1"), "c2c1q", "q")).toBe(true);
+    expect(movesMatch(nameToSq("c2"), nameToSq("c1"), "c2c1q", "Q")).toBe(true);
+    expect(movesMatch(nameToSq("c2"), nameToSq("c1"), "c2c1q", "n")).toBe(false);
+    // A token without a piece accepts any promotion.
+    expect(movesMatch(nameToSq("c2"), nameToSq("c1"), "c2c1", "r")).toBe(true);
   });
 });

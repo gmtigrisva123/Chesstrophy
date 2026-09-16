@@ -101,42 +101,9 @@ const ADAPTIVE_LESSONS = [
   },
 ];
 
-const COACH_PERSONAS = [
-  { id: "aria",  name: "GM Aria Volkov",    style: "Tactical",    icon: "⚔️",  accent: "#ef4444", desc: "Direct, sharp, focuses on combinations and calculation drills." },
-  { id: "dante", name: "IM Dante Ferreira", style: "Opening",     icon: "📖", accent: "#f59e0b", desc: "Opening specialist. Builds your repertoire from the ground up." },
-  { id: "yuki",  name: "FM Yuki Tanaka",    style: "Positional",  icon: "♟️",  accent: "#60a5fa", desc: "Patient and methodical. Teaches structure, plans, and endgames." },
-];
-
-const AI_INSIGHTS = [
-  { id: "i1", icon: "🔥", title: "Tactical blindspot detected",     body: "You missed knight fork patterns in 3 of your last 5 puzzles. Recommend: 15 min knight fork drill today.",           action: "Start Drill", priority: "high"   },
-  { id: "i2", icon: "📈", title: "Learning velocity: +12% this week",body: "Your pattern recognition improved significantly. Morning sessions are 34% more effective for you.",                 action: "View Data",  priority: "medium" },
-  { id: "i3", icon: "⏱️", title: "Time management opportunity",      body: "You spend 40% more time on moves 10–20 than average. Consider practising blitz games to sharpen decision speed.", action: "Play Blitz", priority: "medium" },
-  { id: "i4", icon: "🎯", title: "Endgame gap identified",           body: "Rook endgame accuracy: 58%. The Lucena and Philidor positions are your priority area.",                             action: "Start Lesson",priority: "high"  },
-];
-
-const WEEKLY_GOALS = [
-  { id: "g1", label: "Complete 2 adaptive lessons",  progress: 1, max: 2, icon: "📚" },
-  { id: "g2", label: "Solve 20 tactical puzzles",    progress: 13, max: 20, icon: "🧩" },
-  { id: "g3", label: "Play 5 practice games",        progress: 2, max: 5,  icon: "♟️" },
-  { id: "g4", label: "Review 1 annotated game",      progress: 1, max: 1,  icon: "🔍" },
-];
-
-const RADAR_DATA = [
-  { label: "Tactics",      value: 72 },
-  { label: "Strategy",     value: 58 },
-  { label: "Endgames",     value: 44 },
-  { label: "Openings",     value: 65 },
-  { label: "Calculation",  value: 68 },
-  { label: "Time Mgmt",    value: 55 },
-];
-
 export {
   PLACEMENT_QUESTIONS,
   PLAYER_STYLES,
   COGNITIVE_METRICS,
   ADAPTIVE_LESSONS,
-  COACH_PERSONAS,
-  AI_INSIGHTS,
-  WEEKLY_GOALS,
-  RADAR_DATA,
 };

@@ -21,6 +21,10 @@ const STORAGE_KEYS = [
   "chessprophy_course_progress",
   "chessprophy_economy",
   "chessprophy_profile",
+  "chessprophy_academy",
+  "chessprophy_dna_history",
+  "cp_admin_auth",
+  "cp_admin_audit",
 ];
 
 const __storageCache = {};

@@ -10,6 +10,7 @@ function MaintenanceScreen() {
         <div style={{ fontSize: 40, marginBottom: 18 }}>🛠️</div>
         <div style={{ fontFamily: "Georgia,serif", fontSize: "1.4rem", fontWeight: 700, marginBottom: 12 }}>{s.siteName || "ChessProphy"} is briefly offline</div>
         <p style={{ fontSize: "0.88rem", color: "#999", lineHeight: 1.7 }}>{s.maintenanceMsg || "ChessProphy is undergoing scheduled maintenance. Back soon!"}</p>
+        <a href="#/admin" style={{ display: "inline-block", marginTop: 22, fontSize: "0.72rem", color: "#555", textDecoration: "none" }}>Admin sign in →</a>
       </div>
     </div>
   );

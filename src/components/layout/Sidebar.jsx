@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { getAdminSession, subscribeAdminSession } from "../../services/adminAuth.js";
 import { loadEconomy } from "../../services/economy.js";
 import { loadProfile } from "../../services/profile.js";
 
@@ -104,6 +106,11 @@ function Sidebar({ dark, active, setActive }) {
   const mutedText = dark ? "#8891a8" : "#666";
   const navTheme = { G, G_LT, dark, mutedText };
 
+  // The admin panel link only appears while an admin session is active; the
+  // panel itself is always reachable at #/admin.
+  const [adminSession, setAdminSession] = useState(() => getAdminSession());
+  useEffect(() => subscribeAdminSession(() => setAdminSession(getAdminSession())), []);
+
   return (
     <aside style={{
       position:"fixed", top:0, left:0, bottom:0, zIndex:200,
@@ -186,6 +193,18 @@ function Sidebar({ dark, active, setActive }) {
           </div>
         ))}
       </nav>
+
+      {adminSession && (
+        <div style={{ padding:"12px 20px 16px", borderTop:`1px solid ${border}`, flexShrink:0 }}>
+          <a href="#/admin" style={{
+            display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, textDecoration:"none",
+            background: dark ? "rgba(201,168,76,0.08)" : "rgba(201,168,76,0.12)", border:"1px solid rgba(201,168,76,0.35)",
+            color:"#C9A84C", fontWeight:700, fontSize:"0.8rem",
+          }}>
+            <span>🛡️</span><span style={{ flex:1 }}>Admin panel</span><span style={{ opacity:0.7 }}>›</span>
+          </a>
+        </div>
+      )}
     </aside>
   );
 }

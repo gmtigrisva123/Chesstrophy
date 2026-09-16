@@ -198,7 +198,7 @@ function Dashboard({ dark, setActive }) {
           <div style={{ fontSize: "0.68rem", fontWeight: 800, color: GOLD, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>🏆 Featured Event</div>
           <div style={{ fontSize: "1.35rem", fontWeight: 800, color: featuredEvent.banner ? "#fff" : fg, marginBottom: 8, fontFamily: "Georgia,serif" }}>{featuredEvent.title}</div>
           <div style={{ fontSize: "0.82rem", color: featuredEvent.banner ? "#e5e5e5" : muted, marginBottom: 14 }}>
-            📅 {featuredEvent.date} · {featuredEvent.time} · {featuredEvent.type}{featuredEvent.participants ? ` · ${featuredEvent.participants.toLocaleString()} registered` : ""}
+            📅 {featuredEvent.date} · {featuredEvent.time} · {featuredEvent.type}
           </div>
           {featuredEvent.desc && <div style={{ fontSize: "0.82rem", color: featuredEvent.banner ? "#ddd" : muted, lineHeight: 1.6, marginBottom: 18, maxWidth: 560 }}>{featuredEvent.desc}</div>}
           <div style={{ display: "flex", gap: 10 }}>
@@ -232,7 +232,7 @@ function Dashboard({ dark, setActive }) {
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "0.86rem", color: fg, marginBottom: 6 }}>{ev.title}</div>
                 <div style={{ fontSize: "0.74rem", color: muted, marginBottom: 4 }}>{ev.date} · {ev.time}</div>
-                <div style={{ fontSize: "0.72rem", color: muted, marginBottom: 12 }}>{ev.organizer}{ev.participants ? ` · ${ev.participants.toLocaleString()} joined` : ""}</div>
+                {ev.organizer && <div style={{ fontSize: "0.72rem", color: muted, marginBottom: 12 }}>{ev.organizer}</div>}
                 <EventJoinButton ev={ev} GOLD={GOLD} />
               </div>
             );

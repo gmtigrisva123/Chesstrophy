@@ -72,28 +72,22 @@ function OpeningBoard({ fen: fenProp, onMove, interactive = true, baseSqSize = 5
     rerender();
   };
 
+  // chess.com selection rules: only a piece with legal moves can be selected,
+  // clicking the selected piece again deselects it, clicking a legal square
+  // moves, clicking another movable piece switches to it, anything else clears.
+  const trySelect = (sq) => {
+    const legal = chess.legalMoves(sq);
+    if (!legal.length) { setSelSq(null); setLegalSqs([]); return; }
+    setSelSq(sq); setLegalSqs(legal.map(m => m.to));
+  };
   const onSquareClick = (sq) => {
-    if (!interactive) return;
-    if (selSq === null) {
-      const piece = board[sq];
-      if (!piece) return;
-      const isWhite = piece === piece.toUpperCase();
-      if ((turn === "w") !== isWhite) return;
-      setSelSq(sq);
-      setLegalSqs(chess.legalMoves(sq).map(m => m.to));
-    } else {
-      const legal = chess.legalMoves(selSq);
-      const mv = legal.find(m => m.to === sq);
-      if (!mv) {
-        const piece = board[sq];
-        if (piece && (piece === piece.toUpperCase()) === (turn === "w")) {
-          setSelSq(sq); setLegalSqs(chess.legalMoves(sq).map(m => m.to));
-        } else { setSelSq(null); setLegalSqs([]); }
-        return;
-      }
-      if (mv.promo && !promo) { setPromo({ from: selSq, to: sq }); return; }
-      doMove(selSq, sq, promo);
-    }
+    if (!interactive || promo) return;
+    if (selSq === null) { trySelect(sq); return; }
+    if (sq === selSq) { setSelSq(null); setLegalSqs([]); return; }
+    const mv = chess.legalMoves(selSq).find(m => m.to === sq);
+    if (!mv) { trySelect(sq); return; }
+    if (mv.promo) { setPromo({ from: selSq, to: sq }); return; }
+    doMove(selSq, sq);
   };
 
   const copyFen = () => {
@@ -148,8 +142,8 @@ function OpeningBoard({ fen: fenProp, onMove, interactive = true, baseSqSize = 5
           return (
             <div key={"lg" + sq} style={{ position: "absolute", left: c * SQ, top: r * SQ, width: SQ, height: SQ, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
               {occupied
-                ? <div style={{ width: SQ - 8, height: SQ - 8, borderRadius: "50%", border: `3.5px solid ${G}aa` }} />
-                : <div style={{ width: SQ * 0.32, height: SQ * 0.32, borderRadius: "50%", background: `${G}aa` }} />}
+                ? <div style={{ width: SQ, height: SQ, borderRadius: "50%", border: `${Math.max(3, SQ * 0.09)}px solid rgba(0,0,0,0.14)`, boxSizing: "border-box" }} />
+                : <div style={{ width: SQ * 0.32, height: SQ * 0.32, borderRadius: "50%", background: "rgba(0,0,0,0.14)" }} />}
             </div>
           );
         })}

@@ -191,9 +191,9 @@ insert into public.puzzles (id, title, description, theme, rating, fen, solution
   ('f2', 'Pin to Win', 'Find the move that creates an absolute pin, winning material.', 'Absolute Pin', 1200, 'r1bq1rk1/ppp2ppp/2n1pn2/3p4/1bPP4/2NBPN2/PP3PPP/R1BQ1RK1 w - - 2 8', array['d1b3']::text[], array['tactics', 'pin']::text[], false, true),
   ('f3', 'Discovered Check', 'Unleash a discovered attack that wins decisive material.', 'Discovered Attack', 1400, '2r3k1/5ppp/p7/1p6/3B4/1P6/P4PPP/4R1K1 w - - 0 28', array['d4b6']::text[], array['tactics', 'discovered']::text[], false, true),
   ('p1', 'Back Rank Mate', 'The classic back rank finish — White to move and checkmate in 1.', 'Back Rank Checkmate', 900, '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1', array['a1a8']::text[], array['checkmate', 'beginner']::text[], false, true),
-  ('p2', 'Smothered Mate', 'A classic smothered mate pattern. White to move and deliver checkmate.', 'Smothered Mate', 1350, '6rk/6pp/8/8/8/8/6PP/5NRK w - - 0 1', array['f1h2', 'h8g8', 'h2f3', 'g8h8', 'f3g5', 'h8g8', 'g5f7']::text[], array['checkmate', 'knight']::text[], false, true),
+  ('p2', 'Smothered Mate', 'A classic smothered mate pattern. White to move and force checkmate in two.', 'Smothered Mate', 1350, 'r4r1k/pp4pp/7N/8/8/1Q6/PP4PP/6K1 w - - 0 1', array['b3g8', 'f8g8', 'h6f7']::text[], array['checkmate', 'knight']::text[], false, true),
   ('p3', 'Queen Sacrifice', 'A spectacular queen sacrifice leads to a decisive material gain.', 'Queen Sacrifice + Discovery', 1750, 'r4rk1/pp3ppp/2p5/4Pb2/2B5/q4N2/PP3PPP/2RQ1RK1 w - - 0 18', array['d1d8', 'f8d8', 'c1d1']::text[], array['tactics', 'sacrifice']::text[], false, true),
-  ('p4', 'Zugzwang', 'Black must find the correct order to promote and win.', 'Pawn Promotion', 1600, '8/8/8/8/8/1k6/2p5/2K5 b - - 0 1', array['b3b2', 'c1d2', 'c2c1q']::text[], array['endgame', 'promotion']::text[], false, true),
+  ('p4', 'Zugzwang', 'Black to move. Use zugzwang to push the white king away from the queening square, then promote.', 'Pawn Promotion', 1600, '8/8/8/8/8/3kp3/8/4K3 b - - 0 1', array['e3e2', 'e1f2', 'd3d2', 'f2g3', 'e2e1q']::text[], array['endgame', 'promotion']::text[], false, true),
   ('p5', 'Rook Endgame', 'Cut off the enemy king — a key technique in rook endgames.', 'Rook Endgame Technique', 1300, '8/R7/8/8/8/4k3/r7/4K3 w - - 0 1', array['a7a3', 'e3e4', 'a3a4']::text[], array['endgame', 'rook']::text[], false, true),
   ('p6', 'Italian Game Trap', 'Find the sharp tactical sequence that wins a pawn with tempo.', 'Opening Trap', 1100, 'r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4', array['f3e5', 'c6e5', 'd1h5']::text[], array['opening', 'tactics']::text[], false, true)
 on conflict (id) do update set
@@ -755,7 +755,7 @@ on conflict do nothing;
 -- --------------------------------------------------------------------------
 
 insert into public.site_settings (id, site_name, tagline, seo_title, hero_title, hero_subtitle, hero_cta_label, primary_colour, accent_colour, discord_url, youtube_url, twitter_url, maintenance_mode, banner_active, banner_text, banner_colour, homepage) values
-  (true, 'ChessProphy', 'AI-Powered Chess Learning Platform', null, 'Master Chess with AI-Powered Learning', 'Personalized training, daily puzzles, and an AI coach - all in one place.', 'Start Learning Free', '#2563EB', '#C9A84C', null, null, null, false, false, null, '#2563EB', '{"features":[{"id":"f1","icon":"🧩","title":"Daily Puzzles","desc":"Sharpen tactics with a fresh puzzle every day."},{"id":"f2","icon":"🧠","title":"AI Coach","desc":"Personalized feedback powered by ChessProphy AI."},{"id":"f3","icon":"♔","title":"Opening Trainer","desc":"Master repertoires with spaced repetition."}],"stats":[{"id":"st1","label":"Active Members","value":"4,812"},{"id":"st2","label":"Puzzles Solved","value":"1.2M"},{"id":"st3","label":"Studies","value":"340"}],"testimonials":[{"id":"t1","quote":"ChessProphy took my rating from 1200 to 1600 in six months.","author":"— PawnStorm99"},{"id":"t2","quote":"The daily puzzles and streak system actually got me to practice every day for the first time.","author":"— Marcus L."},{"id":"t3","quote":"I started at 800 and now I''m comfortably above 1200. The structured courses made the difference.","author":"— Tomás R."}]}'::jsonb)
+  (true, 'ChessProphy', 'AI-Powered Chess Learning Platform', null, 'Master Chess with AI-Powered Learning', 'Personalized training, daily puzzles, and an AI coach - all in one place.', 'Start Learning Free', '#2563EB', '#C9A84C', null, null, null, false, false, null, '#2563EB', '{"features":[{"id":"f1","icon":"🧩","title":"Daily Puzzles","desc":"Sharpen tactics with a fresh puzzle every day."},{"id":"f2","icon":"🧠","title":"AI Coach","desc":"Personalized feedback powered by ChessProphy AI."},{"id":"f3","icon":"♔","title":"Opening Trainer","desc":"Master repertoires with spaced repetition."}]}'::jsonb)
 on conflict (id) do update set
   site_name = excluded.site_name,
   tagline = excluded.tagline,
@@ -780,41 +780,11 @@ on conflict (id) do update set
 -- News, events and announcements
 -- --------------------------------------------------------------------------
 
-insert into public.news_posts (id, title, content, cover_url, author, tags, published_at, status) values
-  ('ad29535b-565b-41ac-ae54-6c069cb7ca32', 'Welcome to ChessProphy', 'We''ve launched a brand-new learning platform — dashboards, puzzles, an AI coach, and more.', null, 'ChessProphy Team', array['announcement']::text[], now(), 'published')
-on conflict (id) do update set
-  title = excluded.title,
-  content = excluded.content,
-  cover_url = excluded.cover_url,
-  author = excluded.author,
-  tags = excluded.tags,
-  published_at = excluded.published_at,
-  status = excluded.status
-;
+-- news_posts: no rows
 
-insert into public.events (id, title, description, banner_url, event_type, organizer, starts_at, register_url, participant_cap, is_featured, status) values
-  ('3e44bb86-d315-4871-ab85-44113a1d457c', 'Weekend Rapid Open', 'A free rapid tournament open to all rating levels.', null, 'Rapid', 'ChessProphy Team', now() + interval '7 days', null, 128, true, 'published')
-on conflict (id) do update set
-  title = excluded.title,
-  description = excluded.description,
-  banner_url = excluded.banner_url,
-  event_type = excluded.event_type,
-  organizer = excluded.organizer,
-  starts_at = excluded.starts_at,
-  register_url = excluded.register_url,
-  participant_cap = excluded.participant_cap,
-  is_featured = excluded.is_featured,
-  status = excluded.status
-;
+-- events: no rows
 
-insert into public.announcements (id, title, body, scope, is_active) values
-  ('f405db1a-d034-4ca9-a5f5-1749a1bdf5a0', 'New Puzzle System Launched!', 'Daily puzzles, Puzzle of the Day, and ratings are now live.', 'Global', true)
-on conflict (id) do update set
-  title = excluded.title,
-  body = excluded.body,
-  scope = excluded.scope,
-  is_active = excluded.is_active
-;
+-- announcements: no rows
 
 
 commit;

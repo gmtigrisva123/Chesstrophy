@@ -9,6 +9,16 @@ function InteractiveBoard({ fen, onMove, getLegal, lastMove, flipped, sqSize=72,
   const [legSqs, setLegSqs] = useState([]);
   const [drag, setDrag] = useState(null);
   const boardRef = useRef(null);
+  // A press on a piece selects it on mousedown, and the release is handled by
+  // the drag listener. Whether a click then follows depends on the browser —
+  // Chrome fires none because the piece image under the pointer is swapped
+  // out for the drag ghost — so instead of a flag that a missing click would
+  // leave armed, clicks are ignored for a short window after such a release.
+  const ignoreClicksUntilRef = useRef(0);
+
+  // A new position (the opponent replied, the user stepped through the game,
+  // the lesson changed) invalidates whatever was selected in the old one.
+  useEffect(() => { setSelSq(null); setLegSqs([]); }, [fen]);
 
   // ── Manual annotations (right-click drag = arrow, right-click = square highlight) ──
   // Self-contained/uncontrolled — purely a study aid, cleared on the next real move
@@ -31,17 +41,25 @@ function InteractiveBoard({ fen, onMove, getLegal, lastMove, flipped, sqSize=72,
   // squareOf() gives pixel centers for the shared ChessArrow overlay (hint/best-move arrows)
   const squareOf = (rSq) => { if (rSq==null||rSq<0) return null; const dSq=toReal(rSq); const dr=Math.floor(dSq/8),dc=dSq%8; return { x: dc*sqSize+sqSize/2, y: dr*sqSize+sqSize/2 }; };
 
+  // chess.com selection rules: a piece is selected only when it has legal
+  // moves (so an empty square or a frozen piece never lights up), pressing a
+  // legal square moves, pressing the selected piece again deselects, pressing
+  // another movable piece switches to it, and anything else clears.
+  const clearSel = () => { setSelSq(null); setLegSqs([]); };
   const handleClick = (dSq) => {
+    if (Date.now() < ignoreClicksUntilRef.current) return;
     if (drag) return;
     if (allowAnnotations && (manualArrows.length || manualHighlights.length)) clearAnnotations();
     const rSq = toReal(dSq);
-    if (selSq===null) { doSel(rSq); }
-    else if (legSqs.includes(rSq)) { onMove&&onMove(selSq,rSq); setSelSq(null); setLegSqs([]); }
-    else { doSel(rSq); }
+    if (selSq!==null && rSq===selSq) { clearSel(); return; }
+    if (selSq!==null && legSqs.includes(rSq)) { onMove&&onMove(selSq,rSq); clearSel(); return; }
+    if (!doSel(rSq)) clearSel();
   };
   const doSel = (rSq) => {
     const legal = getLegal?getLegal(rSq):[];
+    if (!legal.length) return false;
     setSelSq(rSq); setLegSqs(legal.map(m=>m.to));
+    return true;
   };
   // Stable identity: the drag listeners below depend on it, and recreating it
   // every render would re-register them on every pointer move.
@@ -54,16 +72,29 @@ function InteractiveBoard({ fen, onMove, getLegal, lastMove, flipped, sqSize=72,
     if (dc<0||dc>7||dr<0||dr>7) return -1;
     return toReal(dr*8+dc);
   }, [sqSize, toReal]);
+  // Returns true when a drag started. A press on a square that cannot be
+  // dragged (empty, or a legal destination) is left to handleClick.
   const startDrag = (e,dSq) => {
-    if (e.button !== undefined && e.button !== 0) return; // ignore right/middle click
+    if (e.button !== undefined && e.button !== 0) return false; // ignore right/middle click
     const rSq=toReal(dSq),piece=board[rSq];
-    if (!piece) return;
+    if (!piece) return false;
+    // A press on a capturable enemy piece is a move, not a new selection.
+    if (selSq!==null && rSq!==selSq && legSqs.includes(rSq)) return false;
     const legal=getLegal?getLegal(rSq):[];
-    if (!legal.length) return;
+    if (!legal.length) return false;
     e.preventDefault();
     if (allowAnnotations && (manualArrows.length || manualHighlights.length)) clearAnnotations();
     const cx=e.touches?e.touches[0].clientX:e.clientX,cy=e.touches?e.touches[0].clientY:e.clientY;
-    setSelSq(rSq); setLegSqs(legal.map(m=>m.to)); setDrag({sq:rSq,piece,x:cx,y:cy});
+    const wasSelected = rSq===selSq;
+    setSelSq(rSq); setLegSqs(legal.map(m=>m.to)); setDrag({sq:rSq,piece,x:cx,y:cy,wasSelected});
+    return true;
+  };
+  // Touch never produces the click we rely on for mouse (the touchstart is
+  // preventDefault-ed to stop the page scrolling), so a tap that did not start
+  // a drag — on a legal destination, say — is handled as a click right here.
+  const onTouchStart = (e,dSq) => {
+    e.preventDefault();
+    if (!startDrag(e,dSq)) handleClick(dSq);
   };
   const startRightDrag = (e, dSq) => {
     if (!allowAnnotations) return;
@@ -98,7 +129,21 @@ function InteractiveBoard({ fen, onMove, getLegal, lastMove, flipped, sqSize=72,
   useEffect(() => {
     if (!drag) return;
     const mv=(e)=>{const cx=e.touches?e.touches[0].clientX:e.clientX,cy=e.touches?e.touches[0].clientY:e.clientY;setDrag(d=>d?{...d,x:cx,y:cy}:null);};
-    const up=(e)=>{const cx=e.changedTouches?e.changedTouches[0].clientX:e.clientX,cy=e.changedTouches?e.changedTouches[0].clientY:e.clientY;const t=getBSq(cx,cy);if(t>=0&&legSqs.includes(t)&&onMove)onMove(drag.sq,t);setDrag(null);setSelSq(null);setLegSqs([]);};
+    const up=(e)=>{
+      const cx=e.changedTouches?e.changedTouches[0].clientX:e.clientX,cy=e.changedTouches?e.changedTouches[0].clientY:e.clientY;
+      const t=getBSq(cx,cy);
+      setDrag(null);
+      if (t===drag.sq) {
+        // Released on the piece itself: a first press keeps it selected, a
+        // press on an already-selected piece deselects it. Any click the
+        // browser synthesises for this release must not run the selection again.
+        if (drag.wasSelected) { setSelSq(null); setLegSqs([]); }
+        ignoreClicksUntilRef.current = Date.now() + 250;
+        return;
+      }
+      if (t>=0&&legSqs.includes(t)&&onMove) onMove(drag.sq,t);
+      setSelSq(null); setLegSqs([]);
+    };
     window.addEventListener("mousemove",mv);window.addEventListener("mouseup",up);
     window.addEventListener("touchmove",mv,{passive:false});window.addEventListener("touchend",up);
     return()=>{window.removeEventListener("mousemove",mv);window.removeEventListener("mouseup",up);window.removeEventListener("touchmove",mv);window.removeEventListener("touchend",up);};
@@ -109,7 +154,7 @@ function InteractiveBoard({ fen, onMove, getLegal, lastMove, flipped, sqSize=72,
       <div style={{position:"absolute",left:-22,top:0,display:"flex",flexDirection:"column",height:sqSize*8}}>
         {ranks.map(r=><div key={r} style={{height:sqSize,display:"flex",alignItems:"center",justifyContent:"center",fontSize:"0.62rem",fontWeight:700,color:"#777",fontFamily:"monospace",width:18}}>{r}</div>)}
       </div>
-      <div ref={boardRef} onContextMenu={e => { if (allowAnnotations) e.preventDefault(); }} style={{display:"grid",gridTemplateColumns:`repeat(8,${sqSize}px)`,gridTemplateRows:`repeat(8,${sqSize}px)`,border:"2px solid #8B5E20",borderRadius:4,overflow:"hidden",boxShadow:"0 12px 40px rgba(0,0,0,0.55),0 2px 8px rgba(0,0,0,0.35)"}}>
+      <div ref={boardRef} onContextMenu={e => { if (allowAnnotations) e.preventDefault(); }} style={{display:"grid",gridTemplateColumns:`repeat(8,${sqSize}px)`,gridTemplateRows:`repeat(8,${sqSize}px)`,border:"2px solid #8B5E20",borderRadius:4,overflow:"hidden",boxShadow:"0 12px 40px rgba(0,0,0,0.55),0 2px 8px rgba(0,0,0,0.35)",touchAction:"none"}}>
         {Array.from({length:64},(_,dSq)=>{
           const rSq=toReal(dSq),[dr,dc]=[Math.floor(dSq/8),dSq%8],isLight=(dr+dc)%2===0;
           const isSel=rSq===selSq,isLegal=legSqs.includes(rSq),isLF=lastMove&&rSq===lastMove.from,isLT=lastMove&&rSq===lastMove.to,isChk=rSq===checkSq,isDrag=drag&&rSq===drag.sq;
@@ -124,8 +169,10 @@ function InteractiveBoard({ fen, onMove, getLegal, lastMove, flipped, sqSize=72,
           const piece=board[rSq];
           return (
             <div key={dSq} style={{width:sqSize,height:sqSize,background:bg,position:"relative",display:"flex",alignItems:"center",justifyContent:"center",cursor:piece&&!isDrag?"grab":"default",transition:"background 0.08s"}}
-              onClick={()=>handleClick(dSq)} onMouseDown={e=>{ if(e.button===2){startRightDrag(e,dSq);} else {startDrag(e,dSq);} }} onTouchStart={e=>{e.preventDefault();startDrag(e,dSq);}}>
-              {isLegal&&(piece?<div style={{position:"absolute",inset:0,border:"4px solid rgba(0,0,0,0.26)",pointerEvents:"none",zIndex:2}}/>:<div style={{width:sqSize*0.3,height:sqSize*0.3,borderRadius:"50%",background:"rgba(0,0,0,0.19)",pointerEvents:"none",zIndex:2}}/>)}
+              onClick={()=>handleClick(dSq)} onMouseDown={e=>{ if(e.button===2){startRightDrag(e,dSq);} else {startDrag(e,dSq);} }} onTouchStart={e=>onTouchStart(e,dSq)}>
+              {isLegal&&(piece
+                ?<div style={{position:"absolute",inset:0,borderRadius:"50%",border:`${Math.max(3,sqSize*0.09)}px solid rgba(0,0,0,0.14)`,boxSizing:"border-box",pointerEvents:"none",zIndex:2}}/>
+                :<div style={{width:sqSize*0.32,height:sqSize*0.32,borderRadius:"50%",background:"rgba(0,0,0,0.14)",pointerEvents:"none",zIndex:2}}/>)}
               {piece&&!isDrag&&<div style={{zIndex:1}}><PieceSVG piece={piece} size={sqSize-4}/></div>}
               {dc===0&&<span style={{position:"absolute",top:2,left:3,fontSize:"0.6rem",fontWeight:700,color:isLight?"#B07540":"#EAC989",lineHeight:1,pointerEvents:"none",zIndex:5}}>{ranks[dr]}</span>}
               {dr===7&&<span style={{position:"absolute",bottom:1,right:3,fontSize:"0.6rem",fontWeight:700,color:isLight?"#B07540":"#EAC989",lineHeight:1,pointerEvents:"none",zIndex:5}}>{files[dc]}</span>}

@@ -2,18 +2,15 @@ import { PLACEMENT_QUESTIONS } from "../data/coachInsights.js";
 import { __notifyAdminDataChanged } from "../lib/storage/adminDataEvents.js";
 import { readJson, writeJson } from "../lib/storage/jsonStore.js";
 
-// ── Admin data stores (localStorage-backed) — this is the site's content
-// database (studies, courses, openings, news, events, resources, homepage
-// config, etc.). Every public page reads from here. The Admin Portal that
-// used to write to it through a UI has been removed; this data layer stays
-// so the live site keeps working from whatever content is already in it.
+// ── Admin data store — this is the site's content database (studies,
+// courses, openings, news, events, resources, homepage config, etc.). Every
+// public page reads from here, and the admin panel (src/features/admin,
+// reached at #/admin) writes to it through src/services/adminContent.js so
+// every change is audited.
 const ADMIN_DATA_KEY = "cp_admin_data";
 function defaultAdminData() {
   return {
-    studies: [
-      { id: "s1", title: "Rook Endgames Fundamentals", desc: "Learn the Lucena and Philidor positions.", body: "", pgn: "", difficulty: "Intermediate", category: "Endgame", time: "30 min", tags: ["endgame","rook"], url: "", image: "", thumbnail: "", published: true, archived: false, featured: false },
-      { id: "s2", title: "Italian Game Blueprint", desc: "Full White repertoire based on the Italian.", body: "", pgn: "", difficulty: "Beginner", category: "Opening", time: "20 min", tags: ["opening","italian"], url: "", image: "", thumbnail: "", published: false, archived: false, featured: false },
-    ],
+    studies: [], // Community studies — nothing is seeded; content arrives only from a real CMS/backend
     courses: [], // Full Learn/Cheat Sheet/Practice courses — rendered live in Studies via CourseViewer
     storeItems: [
       { id: "store1", title: "Advanced Calculation Mastery", desc: "Deep calculation training for sharp, forcing positions.", difficulty: "Advanced", targetRating: "1600–1900", priceCoins: 2000, priceReal: null, icon: "🧮", published: true, archived: false },
@@ -29,26 +26,11 @@ function defaultAdminData() {
       daily_questions:    { label: "Daily Questions session",  coins: 20,  xp: 30,  enabled: true },
       weekly_mission:     { label: "Weekly mission complete",  coins: 200, xp: 300, enabled: true },
     },
-    openings: [
-      { id: "o1", name: "Sicilian Defense", eco: "B20-B99", side: "Black", desc: "The most popular response to 1.e4.", moves: "1.e4 c5", pgn: "1.e4 c5", fen: "", difficulty: "Intermediate", tags: ["sicilian","aggressive"], variations: [], imageUrl: "", videoUrl: "", url: "", published: true, archived: false },
-    ],
-    lessons: [
-      { id: "l1", title: "Piece Values Explained", category: "Tactics", difficulty: "Beginner", desc: "Learn the relative values of all pieces.", body: "", image: "", video: "", fen: "", published: true },
-    ],
-    announcements: [
-      { id: "a1", title: "New Puzzle System Launched!", body: "Daily puzzles, Puzzle of the Day, and ratings are now live.", scope: "Global", active: true, date: new Date().toDateString() },
-    ],
-    users: [
-      { id: "u1", name: "KnightRider42", rating: 1420, puzzleRating: 1550, streak: 7, joined: "2025-01-15", status: "active" },
-      { id: "u2", name: "PawnStorm99",   rating: 1180, puzzleRating: 1220, streak: 3, joined: "2025-02-08", status: "active" },
-      { id: "u3", name: "QueenGambit",   rating: 1870, puzzleRating: 1960, streak: 0, joined: "2024-12-01", status: "active" },
-    ],
-    news: [
-      { id: "n1", title: "Welcome to ChessProphy", cover: "", content: "We've launched a brand-new learning platform — dashboards, puzzles, an AI coach, and more.", tags: ["announcement"], author: "ChessProphy Team", date: new Date().toDateString(), published: true },
-    ],
-    events: [
-      { id: "ev1", title: "Weekend Rapid Open", banner: "", date: new Date(Date.now() + 7*86400000).toDateString(), time: "18:00 UTC", datetime: new Date(Date.now() + 7*86400000).toISOString(), type: "Rapid", organizer: "ChessProphy Team", participants: 128, status: "upcoming", featured: true, desc: "A free rapid tournament open to all rating levels.", registerUrl: "" },
-    ],
+    openings: [],
+    lessons: [],
+    announcements: [],
+    news: [],
+    events: [],
     dashboardConfig: {
       sections: { welcome: true, classicGames: true, openingTrainer: true, updates: true, featuredEvent: true, upcomingEvents: true, continueLearning: true, progress: true, recommendations: true, activity: true },
       order: ["welcome", "classicGames", "openingTrainer", "continueLearning", "updates", "featuredEvent", "upcomingEvents", "progress", "recommendations", "activity"],
@@ -60,12 +42,8 @@ function defaultAdminData() {
       approvedCreators: [], // usernames allowed to post, used by admins_approved / custom
       moderationEnabled: false, // when true, non-admin posts land as "pending" until approved
     },
-    chessflixContent: [
-      { id: "cf1", title: "Understanding the Sicilian Defense", desc: "A deep dive into the key pawn breaks and piece placement ideas behind chess's most popular defense.", type: "video", mediaUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", thumbnail: "", category: "Openings", creatorName: "ChessProphy Team", creatorId: "admin", views: 1284, status: "published", featured: true, createdAt: new Date(Date.now() - 3*86400000).toISOString() },
-    ],
-    resources: [
-      { id: "r1", title: "Endgame Cheat Sheet", type: "PDF", category: "Endgame", url: "", desc: "Key theoretical endgame positions every player should know.", archived: false },
-    ],
+    chessflixContent: [],
+    resources: [],
     positions: [], // Board Builder: saved positions {id, fen, arrows, highlights, comment, title}
     questionCards: PLACEMENT_QUESTIONS.map((q, i) => ({ id: "qc" + i, ...q })), // ChessProphy AI placement quiz — admin-editable
     puzzlesAdmin: [], // Admin-authored puzzles merged into the live Puzzles page
@@ -153,16 +131,6 @@ function defaultAdminData() {
         { id:"f2", icon:"🧠", title:"AI Coach", desc:"Personalized feedback powered by ChessProphy AI." },
         { id:"f3", icon:"♔",  title:"Opening Trainer", desc:"Master repertoires with spaced repetition." },
       ],
-      stats: [
-        { id:"st1", label:"Active Members", value:"4,812" },
-        { id:"st2", label:"Puzzles Solved", value:"1.2M" },
-        { id:"st3", label:"Studies", value:"340" },
-      ],
-      testimonials: [
-        { id:"t1", quote:"ChessProphy took my rating from 1200 to 1600 in six months.", author:"— PawnStorm99" },
-        { id:"t2", quote:"The daily puzzles and streak system actually got me to practice every day for the first time.", author:"— Marcus L." },
-        { id:"t3", quote:"I started at 800 and now I'm comfortably above 1200. The structured courses made the difference.", author:"— Tomás R." },
-      ],
     },
     widgets: {
       dailyPuzzle: true, openingOfWeek: true, recentStudies: true,
@@ -174,10 +142,37 @@ function defaultAdminData() {
     },
   };
 }
+// Earlier builds seeded placeholder records into defaultAdminData() — a sample
+// study, opening, lesson, resource, announcement, news post, an event that was
+// always "7 days away" with 128 fake attendees, a ChessFlix video with 1,284
+// fake views, three invented member accounts, fake homepage stats and
+// testimonials. Every browser that recorded a wiki/ChessFlix view has that
+// demo data persisted in cp_admin_data, so dropping it from the defaults is
+// not enough: strip those exact records on load so they can never render again.
+// Records the user genuinely created (a ChessFlix post, say) have different
+// ids and pass through untouched.
+const DEMO_RECORD_IDS = {
+  studies: ["s1", "s2"], openings: ["o1"], lessons: ["l1"], resources: ["r1"],
+  announcements: ["a1"], news: ["n1"], events: ["ev1"], chessflixContent: ["cf1"],
+};
+function stripDemoRecords(parsed) {
+  const next = { ...parsed };
+  for (const [key, ids] of Object.entries(DEMO_RECORD_IDS)) {
+    if (Array.isArray(next[key])) next[key] = next[key].filter(r => !ids.includes(r?.id));
+  }
+  delete next.users;
+  if (next.homepage) {
+    const { stats: _stats, testimonials: _testimonials, ...homepage } = next.homepage;
+    next.homepage = homepage;
+  }
+  return next;
+}
+
 function loadAdminData() {
   const defaults = defaultAdminData();
-  const parsed = readJson(ADMIN_DATA_KEY, () => null);
-  if (!parsed) return defaults;
+  const stored = readJson(ADMIN_DATA_KEY, () => null);
+  if (!stored) return defaults;
+  const parsed = stripDemoRecords(stored);
   // Shallow-merge so older saved states pick up newly-added CMS sections
   return { ...defaults, ...parsed,
     settings: { ...defaults.settings, ...(parsed.settings || {}) },

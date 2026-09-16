@@ -4,11 +4,12 @@ import { ALL_NODES, buildEdges, flatCoords, getNodeStatus, nodeCoords } from "./
 import { MetricGauge } from "../../components/ui/MetricGauge.jsx";
 import { ProgressBar } from "../../components/ui/ProgressBar.jsx";
 import { RadarChart } from "../../components/ui/RadarChart.jsx";
-import { ADAPTIVE_LESSONS, AI_INSIGHTS, COGNITIVE_METRICS, PLACEMENT_QUESTIONS, PLAYER_STYLES, RADAR_DATA, WEEKLY_GOALS } from "../../data/coachInsights.js";
+import { ADAPTIVE_LESSONS, COGNITIVE_METRICS, PLACEMENT_QUESTIONS, PLAYER_STYLES } from "../../data/coachInsights.js";
 import { TREE_DATA } from "../../data/learningTree.js";
 import { loadAdminData } from "../../services/adminData.js";
+import { buildCognitiveProfile, computeAIInsights, computeResearchFindings, computeResearchSeries, computeSkillRadar, computeWeeklyGoals, isEmptyProfile, recommendBranch } from "../../services/coachAnalytics.js";
 import { loadCMState, saveCMState } from "../../services/coachState.js";
-import { loadLTState, saveLTState } from "../../services/learningTreeState.js";
+import { loadLTState, saveLTState, treeXP } from "../../services/learningTreeState.js";
 import { DailyQuestionsSection } from "../dailyQuestions/DailyQuestionsSection.jsx";
 
 // ── MAIN LEARNING TREE PAGE ───────────────────────────────────────────────────
@@ -42,7 +43,7 @@ function DiffBadge({ level, beginnerColor, intermediateColor }) {
   return <span style={{ fontSize: "0.65rem", fontWeight: 700, color: c, background: c + "18", border: `1px solid ${c}33`, borderRadius: 5, padding: "2px 7px" }}>{level}</span>;
 }
 
-function LearningTreePage({ dark }) {
+function LearningTreePage({ dark, setActive }) {
   const [tab, setTab] = useState("tree");
   const G      = "#2563EB";
   const PURPLE = "#8b5cf6";
@@ -62,10 +63,10 @@ function LearningTreePage({ dark }) {
   const save = (upd) => { const ns = {...ltState,...upd}; setLtState(ns); saveLTState(ns); };
 
   const masteredCount = Object.values(ltState.nodeProgress).filter(v => v >= 100).length;
+  const totalXP = treeXP(ltState.nodeProgress);
 
   const handlePractice = (nodeId) => {
     const prog = { ...ltState.nodeProgress, [nodeId]: Math.min(100, (ltState.nodeProgress[nodeId] || 0) + 25) };
-    const newXP = ltState.xp + 50;
     // Auto-unlock children when node reaches 50%
     const unlocked = [...ltState.unlockedNodes];
     if (prog[nodeId] >= 50) {
@@ -73,9 +74,23 @@ function LearningTreePage({ dark }) {
         if (!unlocked.includes(child.id)) unlocked.push(child.id);
       });
     }
-    save({ nodeProgress: prog, xp: newXP, unlockedNodes: unlocked });
+    save({ nodeProgress: prog, unlockedNodes: unlocked });
     setSelected(null);
   };
+
+  // Branch mastery from the tree's own records, reused by the overview cards
+  // and the recommendation banner so both always agree.
+  const branchStats = TREE_DATA.children.map(branch => {
+    const branchNodes = flatCoords(branch);
+    const unlocked = branchNodes.filter(n => ltState.unlockedNodes.includes(n.id)).length;
+    const mastered = branchNodes.filter(n => (ltState.nodeProgress[n.id] || 0) >= 100).length;
+    // The next thing to do in this branch: an unlocked node that is not yet
+    // mastered — or, when the branch is still locked, the node that unlocks it.
+    const next = branchNodes.find(n => ltState.unlockedNodes.includes(n.id) && (ltState.nodeProgress[n.id] || 0) < 100) || null;
+    const gate = next ? null : ALL_NODES.find(n => (branch.requires || []).includes(n.id)) || null;
+    return { ...branch, unlocked, mastered, total: branchNodes.length, next, gate };
+  });
+  const recommendation = recommendBranch(branchStats);
 
   // Pan with mouse drag
   const onMouseDown = (e) => { if (e.button !== 0) return; setDragging(true); setDragStart({ x: e.clientX, y: e.clientY, vb: { ...viewBox } }); };
@@ -130,7 +145,7 @@ function LearningTreePage({ dark }) {
           </div>
           <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
             <div style={{ background:card,border:`1px solid ${border}`,borderRadius:11,padding:"10px 16px",textAlign:"center" }}>
-              <div style={{ fontFamily:"Georgia,serif",fontSize:"1.2rem",fontWeight:700,color:PURPLE }}>{ltState.xp.toLocaleString()}</div>
+              <div style={{ fontFamily:"Georgia,serif",fontSize:"1.2rem",fontWeight:700,color:PURPLE }}>{totalXP.toLocaleString()}</div>
               <div style={{ fontSize:"0.62rem",color:muted,textTransform:"uppercase",letterSpacing:"0.06em" }}>Total XP</div>
             </div>
             <div style={{ background:card,border:`1px solid ${border}`,borderRadius:11,padding:"10px 16px",textAlign:"center" }}>
@@ -151,8 +166,20 @@ function LearningTreePage({ dark }) {
         <div>
           <div style={{ fontSize:"0.74rem",fontWeight:700,color:PURPLE,marginBottom:2 }}>AI Recommendation</div>
           <div style={{ fontSize:"0.82rem",color:fg }}>
-            Your <strong style={{color:"#2563EB"}}>Tactics</strong> branch is strong but <strong style={{color:"#f59e0b"}}>Endgames</strong> is underdeveloped. 
-            Complete the <strong style={{color:fg}}>King & Pawn</strong> module next to unlock the Philidor and Lucena positions.
+            {recommendation ? (
+              <>
+                Your <strong style={{color:"#2563EB"}}>{recommendation.strongest.label}</strong> branch is furthest along
+                ({recommendation.strongest.unlocked}/{recommendation.strongest.total} unlocked) while <strong style={{color:"#f59e0b"}}>{recommendation.weakest.label}</strong> is
+                behind ({recommendation.weakest.unlocked}/{recommendation.weakest.total}).
+                {recommendation.weakest.next
+                  ? <> Train <strong style={{color:fg}}>{recommendation.weakest.next.label}</strong> next to open up that branch.</>
+                  : recommendation.weakest.gate
+                    ? <> Train <strong style={{color:fg}}>{recommendation.weakest.gate.label}</strong> to 50% to unlock it.</>
+                    : <> Unlock its first node to start building it up.</>}
+              </>
+            ) : (
+              <>Pick any unlocked node and train it — once a few nodes have progress, this recommendation will point at whichever branch is falling behind.</>
+            )}
           </div>
         </div>
       </div>
@@ -294,11 +321,8 @@ function LearningTreePage({ dark }) {
         <div style={{ height:1,flex:1,background:border }}/>
       </div>
       <div style={{ display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:12 }}>
-        {TREE_DATA.children.map(branch => {
-          const branchNodes = flatCoords(branch);
-          const unlocked = branchNodes.filter(n => ltState.unlockedNodes.includes(n.id)).length;
-          const total = branchNodes.length;
-          const mastered = branchNodes.filter(n => (ltState.nodeProgress[n.id]||0) >= 100).length;
+        {branchStats.map(branch => {
+          const { unlocked, total, mastered } = branch;
           const pct = Math.round((unlocked/total)*100);
           const c = branch.color || G;
           return (
@@ -368,8 +392,11 @@ function LearningTreePage({ dark }) {
       const topTypes = newAnswers.filter((a, i) => a.a === questionCards[i].correct).map((_, i) => questionCards[i].type);
       const style = topTypes.length >= 2 ? topTypes[0] : "universal";
 
-      const profile = {};
-      COGNITIVE_METRICS.forEach(m => { profile[m.key] = Math.round(30 + Math.random() * 50 + (pct * 20)); });
+      // The cognitive profile is not stored: it is rebuilt from the placement
+      // answers plus live activity every time the page renders (see
+      // buildCognitiveProfile), so it keeps moving as the user trains.
+      const profile = buildCognitiveProfile(newAnswers, questionCards);
+      const ranked = COGNITIVE_METRICS.filter(m => profile[m.key] > 0).sort((a, b) => profile[b.key] - profile[a.key]);
 
       setTimeout(() => {
         saveCM({
@@ -377,11 +404,11 @@ function LearningTreePage({ dark }) {
           placementAnswers: newAnswers,
           estimatedRating: rating,
           playerStyle: style,
-          cognitiveProfile: profile,
+          cognitiveProfile: null,
           learningPath: ADAPTIVE_LESSONS.slice(0, 4).map(l => l.id),
           coachConversation: [{
             role: "assistant",
-            text: `Welcome to ChessProphy AI! Based on your placement, I've estimated your playing strength at **${rating}** and identified you as a **${PLAYER_STYLES[style]?.label || "Universal Player"}**.\n\nYour key strength is ${COGNITIVE_METRICS.find(m => profile[m.key] === Math.max(...Object.values(profile)))?.label || "Tactical Vision"}. Your biggest opportunity for growth is ${COGNITIVE_METRICS.find(m => profile[m.key] === Math.min(...Object.values(profile)))?.label || "Endgame Technique"}.\n\nI've built a personalised learning path for you. Ready to start?`,
+            text: `Welcome to ChessProphy AI! Based on your placement, I've estimated your playing strength at **${rating}** and identified you as a **${PLAYER_STYLES[style]?.label || "Universal Player"}**.\n\n${ranked.length ? `Your key strength so far is ${ranked[0].label}. Your biggest opportunity for growth is ${ranked[ranked.length - 1].label}.` : "Your cognitive profile will fill in as you solve puzzles and answer daily questions."}\n\nI've built a personalised learning path for you. Ready to start?`,
             ts: Date.now(),
           }],
         });
@@ -458,12 +485,27 @@ function LearningTreePage({ dark }) {
   };
 
   // ── MAIN PAGE ─────────────────────────────────────────────────────────────
-  const profile = cmState.cognitiveProfile || {};
+  // Every number below is recomputed from the user's real records on render.
+  // Older installs stored a `cognitiveProfile` that was partly random; it is
+  // deliberately ignored in favour of the live one.
+  const profile = useMemo(() => buildCognitiveProfile(cmState.placementAnswers || [], questionCards), [cmState.placementAnswers, questionCards]);
+  const profileEmpty = isEmptyProfile(profile);
+  const radarData = useMemo(() => computeSkillRadar(), []);
+  const weeklyGoals = useMemo(() => computeWeeklyGoals(), []);
+  const insights = useMemo(() => computeAIInsights(), []);
+  const researchSeries = useMemo(() => computeResearchSeries(), []);
+  const researchFindings = useMemo(() => computeResearchFindings(), []);
+  const visibleInsights = insights.filter(i => !dismissedInsights.includes(i.id));
   const style = cmState.playerStyle || "universal";
   const styleData = PLAYER_STYLES[style] || PLAYER_STYLES.universal;
   const rating = cmState.estimatedRating || 1200;
   const topMetric = COGNITIVE_METRICS.reduce((a, b) => (profile[a.key] || 0) > (profile[b.key] || 0) ? a : b, COGNITIVE_METRICS[0]);
-  const weakMetric = COGNITIVE_METRICS.reduce((a, b) => (profile[a.key] || 100) < (profile[b.key] || 100) ? a : b, COGNITIVE_METRICS[0]);
+  const weakMetric = COGNITIVE_METRICS.reduce((a, b) => (profile[a.key] || 0) < (profile[b.key] || 0) ? a : b, COGNITIVE_METRICS[0]);
+  // An insight's action either switches a tab on this page or navigates the app.
+  const followInsight = (ins) => {
+    if (ins.go?.tab) setTab(ins.go.tab);
+    else if (ins.go?.page && setActive) setActive(ins.go.page);
+  };
 
   // ── Section renderers ──────────────────────────────────────────────────────
   const renderHome = () => (
@@ -492,8 +534,8 @@ function LearningTreePage({ dark }) {
               <div style={{ fontSize: "0.65rem", color: muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Style</div>
             </div>
             <div style={{ textAlign: "center", background: dark ? "#111" : "#f5f5f5", border: `1px solid ${border}`, borderRadius: 12, padding: "12px 18px" }}>
-              <div style={{ fontFamily: "Georgia,serif", fontSize: "1.5rem", fontWeight: 700, color: G }}>{cmState.sessionsCompleted || 0}</div>
-              <div style={{ fontSize: "0.65rem", color: muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Sessions</div>
+              <div style={{ fontFamily: "Georgia,serif", fontSize: "1.5rem", fontWeight: 700, color: G }}>{completedLessons.length}</div>
+              <div style={{ fontSize: "0.65rem", color: muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Lessons Done</div>
             </div>
           </div>
         </div>
@@ -505,16 +547,16 @@ function LearningTreePage({ dark }) {
           <div style={{ fontWeight: 700, fontSize: "0.88rem", color: fg, marginBottom: 4 }}>Skill Radar</div>
           <div style={{ fontSize: "0.72rem", color: muted, marginBottom: 14 }}>Your cognitive strengths at a glance</div>
           <div style={{ display: "flex", justifyContent: "center" }}>
-            <RadarChart data={RADAR_DATA.map((d, i) => ({ ...d, value: Object.values(profile)[i] || d.value }))} color={PURPLE} />
+            <RadarChart data={radarData} color={PURPLE} />
           </div>
         </SCard>
 
         {/* Weekly goals */}
         <SCard card={card} border={border} style={{ padding: "20px 20px" }}>
           <div style={{ fontWeight: 700, fontSize: "0.88rem", color: fg, marginBottom: 4 }}>Weekly Goals</div>
-          <div style={{ fontSize: "0.72rem", color: muted, marginBottom: 16 }}>Personalised training targets</div>
+          <div style={{ fontSize: "0.72rem", color: muted, marginBottom: 16 }}>Progress counted from this week&apos;s activity</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {WEEKLY_GOALS.map(g => (
+            {weeklyGoals.map(g => (
               <div key={g.id}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: fg, marginBottom: 5 }}>
                   <span>{g.icon} {g.label}</span>
@@ -529,20 +571,24 @@ function LearningTreePage({ dark }) {
         {/* Top insight */}
         <SCard card={card} border={border} style={{ padding: "20px 20px" }}>
           <div style={{ fontWeight: 700, fontSize: "0.88rem", color: fg, marginBottom: 16 }}>🔍 Key Findings</div>
+          {profileEmpty ? (
+            <div style={{ fontSize: "0.8rem", color: muted, lineHeight: 1.6 }}>No training data yet. Solve a few puzzles or finish a Daily Questions session and your strengths and focus areas will appear here.</div>
+          ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ background: dark ? "#141414" : "#f8f8f8", border: `1px solid ${G}22`, borderRadius: 10, padding: "12px 14px" }}>
               <div style={{ fontSize: "0.7rem", color: G, fontWeight: 700, marginBottom: 4 }}>💪 Strength</div>
               <div style={{ fontWeight: 700, fontSize: "0.85rem", color: fg, marginBottom: 2 }}>{topMetric.icon} {topMetric.label}</div>
               <div style={{ fontSize: "0.75rem", color: muted }}>{topMetric.desc}</div>
-              <div style={{ marginTop: 8 }}><ProgressBar value={profile[topMetric.key] || 70} color={G} /></div>
+              <div style={{ marginTop: 8 }}><ProgressBar value={profile[topMetric.key] || 0} color={G} /></div>
             </div>
             <div style={{ background: dark ? "#141414" : "#f8f8f8", border: `1px solid ${AMBER}22`, borderRadius: 10, padding: "12px 14px" }}>
               <div style={{ fontSize: "0.7rem", color: AMBER, fontWeight: 700, marginBottom: 4 }}>🎯 Focus Area</div>
               <div style={{ fontWeight: 700, fontSize: "0.85rem", color: fg, marginBottom: 2 }}>{weakMetric.icon} {weakMetric.label}</div>
               <div style={{ fontSize: "0.75rem", color: muted }}>{weakMetric.desc}</div>
-              <div style={{ marginTop: 8 }}><ProgressBar value={profile[weakMetric.key] || 35} color={AMBER} /></div>
+              <div style={{ marginTop: 8 }}><ProgressBar value={profile[weakMetric.key] || 0} color={AMBER} /></div>
             </div>
           </div>
+          )}
         </SCard>
 
         {/* Quick actions */}
@@ -552,7 +598,7 @@ function LearningTreePage({ dark }) {
             {[
               { icon: "🤖", label: "Ask Your AI Coach", sub: "Get instant personalised advice", color: PURPLE, tab: "coach" },
               { icon: "📚", label: "Continue Learning Path", sub: "Pick up where you left off", color: BLUE, tab: "learning" },
-              { icon: "💡", label: "View AI Insights", sub: `${AI_INSIGHTS.filter(i => !dismissedInsights.includes(i.id)).length} new insights`, color: AMBER, tab: "insights" },
+              { icon: "💡", label: "View AI Insights", sub: `${visibleInsights.length} insight${visibleInsights.length === 1 ? "" : "s"} from your activity`, color: AMBER, tab: "insights" },
               { icon: "🔬", label: "Research Lab", sub: "Explore your behavioral data", color: G, tab: "research" },
             ].map(a => (
               <button key={a.label} onClick={() => setTab(a.tab)} style={{
@@ -602,10 +648,10 @@ function LearningTreePage({ dark }) {
       {/* Metric gauges */}
       <SCard card={card} border={border} style={{ padding: "20px 24px", marginBottom: 20 }}>
         <div style={{ fontWeight: 700, fontSize: "0.88rem", color: fg, marginBottom: 4 }}>Cognitive Metrics</div>
-        <div style={{ fontSize: "0.72rem", color: muted, marginBottom: 20 }}>10 dimensions measured from your gameplay patterns</div>
+        <div style={{ fontSize: "0.72rem", color: muted, marginBottom: 20 }}>10 dimensions measured from your puzzles, Daily Questions, openings and placement quiz{profileEmpty ? " — nothing recorded yet, so every gauge starts at 0" : ""}</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, justifyContent: "center" }}>
           {COGNITIVE_METRICS.map(m => (
-            <MetricGauge key={m.key} value={profile[m.key] || 50} label={m.label} icon={m.icon}
+            <MetricGauge key={m.key} value={profile[m.key] || 0} label={m.label} icon={m.icon}
               color={profile[m.key] >= 70 ? G : profile[m.key] >= 50 ? BLUE : AMBER} />
           ))}
         </div>
@@ -616,7 +662,7 @@ function LearningTreePage({ dark }) {
         <div style={{ fontWeight: 700, fontSize: "0.88rem", color: fg, marginBottom: 16 }}>Detailed Breakdown</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {COGNITIVE_METRICS.map(m => {
-            const val = profile[m.key] || 50;
+            const val = profile[m.key] || 0;
             const col = val >= 70 ? G : val >= 50 ? BLUE : AMBER;
             return (
               <div key={m.key}>
@@ -679,7 +725,7 @@ function LearningTreePage({ dark }) {
               <button onClick={() => {
                 const newCompleted = [...completedLessons, lesson.id];
                 setCompletedLessons(newCompleted);
-                saveCM({ completedGoals: newCompleted });
+                saveCM({ completedGoals: newCompleted, sessionsCompleted: (cmState.sessionsCompleted || 0) + 1 });
                 setActiveLesson(null); setLessonStep(0);
               }} style={{ background: `linear-gradient(135deg,${G},#16a34a)`, border: "none", borderRadius: 10, padding: "11px 24px", color: "#fff", fontWeight: 700, fontSize: "0.85rem", cursor: "pointer" }}>
                 Back to Learning Path
@@ -770,9 +816,9 @@ function LearningTreePage({ dark }) {
   const renderInsights = () => (
     <div>
       <div style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.2rem,2.5vw,1.5rem)", fontWeight: 700, color: fg, marginBottom: 4 }}>💡 AI Insights</div>
-      <div style={{ fontSize: "0.8rem", color: muted, marginBottom: 20 }}>Behavioural patterns discovered from your gameplay and training data.</div>
+      <div style={{ fontSize: "0.8rem", color: muted, marginBottom: 20 }}>Observations drawn from your own puzzle, Daily Questions and opening records — each one cites the numbers behind it.</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {AI_INSIGHTS.filter(i => !dismissedInsights.includes(i.id)).map(ins => {
+        {visibleInsights.map(ins => {
           const c = ins.priority === "high" ? "#ef4444" : AMBER;
           return (
             <SCard card={card} border={border} key={ins.id} style={{ padding: "18px 20px", border: `1px solid ${c}22`, transition: "all 0.15s" }}>
@@ -785,7 +831,7 @@ function LearningTreePage({ dark }) {
                   </div>
                   <div style={{ fontSize: "0.8rem", color: muted, lineHeight: 1.6, marginBottom: 12 }}>{ins.body}</div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button style={{ background: c + "15", border: `1px solid ${c}33`, borderRadius: 8, padding: "6px 14px", color: c, fontWeight: 700, fontSize: "0.75rem", cursor: "pointer" }}>{ins.action} →</button>
+                    <button onClick={() => followInsight(ins)} style={{ background: c + "15", border: `1px solid ${c}33`, borderRadius: 8, padding: "6px 14px", color: c, fontWeight: 700, fontSize: "0.75rem", cursor: "pointer" }}>{ins.action} →</button>
                     <button onClick={() => { const nd = [...dismissedInsights, ins.id]; setDismissedInsights(nd); saveCM({ insightsDismissed: nd }); }} style={{ background: "transparent", border: `1px solid ${border}`, borderRadius: 8, padding: "6px 12px", color: muted, fontSize: "0.75rem", cursor: "pointer" }}>Dismiss</button>
                   </div>
                 </div>
@@ -793,12 +839,18 @@ function LearningTreePage({ dark }) {
             </SCard>
           );
         })}
-        {dismissedInsights.length === AI_INSIGHTS.length && (
+        {visibleInsights.length === 0 && (
           <div style={{ textAlign: "center", padding: "40px 20px", color: muted }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-            <div style={{ fontWeight: 700, color: fg, marginBottom: 6 }}>All caught up!</div>
-            <div style={{ fontSize: "0.8rem" }}>New insights will appear as your training data grows.</div>
-            <button onClick={() => setDismissedInsights([])} style={{ marginTop: 16, background: "transparent", border: `1px solid ${border}`, borderRadius: 9, padding: "8px 16px", color: muted, fontSize: "0.78rem", cursor: "pointer" }}>Restore Dismissed</button>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>{insights.length === 0 ? "🧪" : "✅"}</div>
+            <div style={{ fontWeight: 700, color: fg, marginBottom: 6 }}>{insights.length === 0 ? "Nothing to report yet" : "All caught up!"}</div>
+            <div style={{ fontSize: "0.8rem" }}>
+              {insights.length === 0
+                ? "Insights are generated only from real activity. Answer a few Daily Questions (3+ on a topic), solve some puzzles, or practise an opening and they will start appearing here."
+                : "New insights will appear as your training data grows."}
+            </div>
+            {insights.length > 0 && (
+              <button onClick={() => { setDismissedInsights([]); saveCM({ insightsDismissed: [] }); }} style={{ marginTop: 16, background: "transparent", border: `1px solid ${border}`, borderRadius: 9, padding: "8px 16px", color: muted, fontSize: "0.78rem", cursor: "pointer" }}>Restore Dismissed</button>
+            )}
           </div>
         )}
       </div>
@@ -808,15 +860,14 @@ function LearningTreePage({ dark }) {
   const renderResearch = () => (
     <div>
       <div style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.2rem,2.5vw,1.5rem)", fontWeight: 700, color: fg, marginBottom: 4 }}>🔬 Research Lab</div>
-      <div style={{ fontSize: "0.8rem", color: muted, marginBottom: 20 }}>Explore your behavioral data. Every chart is generated from real training sessions.</div>
+      <div style={{ fontSize: "0.8rem", color: muted, marginBottom: 20 }}>Every chart is generated from your real training sessions — a series stays empty until you have produced the data for it.</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 20 }}>
-        {[
-          { title: "Tactic Accuracy Over Time",  icon: "📈", desc: "Tracks your accuracy % across puzzle sessions.", data: [58, 62, 60, 67, 65, 71, 68, 74], color: G },
-          { title: "Time Per Move (avg seconds)", icon: "⏱️", desc: "Average think time in moves 10–25.", data: [32, 28, 35, 24, 29, 22, 27, 20], color: BLUE },
-          { title: "Consistency Score",            icon: "📊", desc: "How stable your play quality is per session.", data: [70, 68, 72, 65, 75, 73, 78, 76], color: PURPLE },
-          { title: "Learning Velocity",            icon: "🚀", desc: "Rate of improvement per week.", data: [5, 8, 6, 12, 9, 14, 11, 16], color: AMBER },
-        ].map(chart => (
-          <SCard card={card} border={border} key={chart.title} style={{ padding: "18px 18px" }}>
+        {researchSeries.map(chart => {
+          const mn = chart.hasData ? Math.min(...chart.data) : 0, mx = chart.hasData ? Math.max(...chart.data) : 0;
+          const px = (i) => i * 28 + 4;
+          const py = (v) => 55 - ((v - mn) / (mx - mn + 1)) * 48;
+          return (
+          <SCard card={card} border={border} key={chart.key} style={{ padding: "18px 18px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
               <span style={{ fontSize: 18 }}>{chart.icon}</span>
               <div>
@@ -824,49 +875,49 @@ function LearningTreePage({ dark }) {
                 <div style={{ fontSize: "0.7rem", color: muted }}>{chart.desc}</div>
               </div>
             </div>
-            {/* Mini sparkline */}
-            <svg width="100%" height={60} viewBox={`0 0 ${chart.data.length * 28} 60`} preserveAspectRatio="none">
-              <polyline
-                points={chart.data.map((v, i) => {
-                  const mn = Math.min(...chart.data), mx = Math.max(...chart.data);
-                  const y = 55 - ((v - mn) / (mx - mn + 1)) * 48;
-                  return `${i * 28 + 4},${y}`;
-                }).join(" ")}
-                fill="none" stroke={chart.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              />
-              {chart.data.map((v, i) => {
-                const mn = Math.min(...chart.data), mx = Math.max(...chart.data);
-                const y = 55 - ((v - mn) / (mx - mn + 1)) * 48;
-                return <circle key={i} cx={i * 28 + 4} cy={y} r="3" fill={chart.color} />;
-              })}
-            </svg>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.68rem", color: muted, marginTop: 6 }}>
-              <span>8 weeks ago</span>
-              <span style={{ color: chart.color, fontWeight: 700 }}>This week: {chart.data[chart.data.length - 1]}</span>
-            </div>
+            {!chart.hasData ? (
+              <div style={{ height: 60, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.74rem", color: muted, border: `1px dashed ${border}`, borderRadius: 8 }}>No data recorded yet</div>
+            ) : (
+              <>
+                {/* Mini sparkline */}
+                <svg width="100%" height={60} viewBox={`0 0 ${chart.data.length * 28} 60`} preserveAspectRatio="none">
+                  <polyline
+                    points={chart.data.map((v, i) => `${px(i)},${py(v)}`).join(" ")}
+                    fill="none" stroke={chart.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  />
+                  {chart.data.map((v, i) => <circle key={i} cx={px(i)} cy={py(v)} r="3" fill={chart.color} />)}
+                </svg>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.68rem", color: muted, marginTop: 6 }}>
+                  <span>{chart.labels ? chart.labels[0] : `${chart.data.length} weeks ago`}</span>
+                  <span style={{ color: chart.color, fontWeight: 700 }}>{chart.labels ? "Latest" : "This week"}: {chart.data[chart.data.length - 1]}{chart.unit}</span>
+                </div>
+              </>
+            )}
           </SCard>
-        ))}
+          );
+        })}
       </div>
 
       {/* Research discoveries */}
       <div style={{ marginTop: 24 }}>
         <div style={{ fontWeight: 700, fontSize: "0.9rem", color: fg, marginBottom: 14 }}>🔍 Discovered Patterns</div>
+        {researchFindings.length === 0 ? (
+          <SCard card={card} border={border} style={{ padding: "18px 16px", fontSize: "0.8rem", color: muted, lineHeight: 1.6 }}>
+            Not enough data yet. Patterns need a minimum sample — at least 3 answers per Daily Questions topic, 10 puzzles, or 10 rewarded activities — before anything is reported here.
+          </SCard>
+        ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[
-            { finding: "Morning sessions show 34% higher tactical accuracy", conf: 87, size: 42 },
-            { finding: "Solving ≥5 puzzles before playing improves game accuracy by 12%", conf: 73, size: 28 },
-            { finding: "Sessions over 90 minutes correlate with endgame blunders", conf: 91, size: 56 },
-          ].map((d, i) => (
+          {researchFindings.map((d, i) => (
             <SCard card={card} border={border} key={i} style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: d.conf >= 85 ? G : AMBER, flexShrink: 0 }} />
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: d.strong ? G : AMBER, flexShrink: 0 }} />
               <div style={{ flex: 1, fontSize: "0.82rem", color: fg }}>{d.finding}</div>
               <div style={{ display: "flex", gap: 12, fontSize: "0.7rem", color: muted, flexShrink: 0 }}>
-                <span>Confidence: <strong style={{ color: d.conf >= 85 ? G : AMBER }}>{d.conf}%</strong></span>
-                <span>n={d.size}</span>
+                <span>n={d.n}</span>
               </div>
             </SCard>
           ))}
         </div>
+        )}
       </div>
     </div>
   );

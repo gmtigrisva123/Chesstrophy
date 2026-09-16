@@ -28,7 +28,7 @@ function EventsPage({ dark }) {
               <div style={{ fontSize: "0.68rem", fontWeight: 800, color: GOLD, letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 10 }}>🏆 Featured Event</div>
               <div style={{ fontSize: "1.35rem", fontWeight: 800, color: featured.banner ? "#fff" : fg, marginBottom: 8, fontFamily: "Georgia,serif" }}>{featured.title}</div>
               <div style={{ fontSize: "0.82rem", color: featured.banner ? "#e5e5e5" : muted, marginBottom: 14 }}>
-                📅 {featured.date} · {featured.time} · {featured.type}{featured.participants ? ` · ${featured.participants.toLocaleString()} registered` : ""}
+                📅 {featured.date} · {featured.time} · {featured.type}
               </div>
               {featured.desc && <div style={{ fontSize: "0.82rem", color: featured.banner ? "#ddd" : muted, lineHeight: 1.6, marginBottom: 18, maxWidth: 560 }}>{featured.desc}</div>}
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -50,8 +50,8 @@ function EventsPage({ dark }) {
                     </div>
                     <div style={{ fontWeight: 700, fontSize: "0.95rem", color: fg, marginBottom: 6 }}>{ev.title}</div>
                     <div style={{ fontSize: "0.76rem", color: "#60a5fa", marginBottom: 6 }}>📅 {ev.date} · {ev.time}</div>
-                    {(ev.organizer || ev.participants) && (
-                      <div style={{ fontSize: "0.72rem", color: muted, marginBottom: 10 }}>{ev.organizer}{ev.participants ? ` · ${ev.participants.toLocaleString()} joined` : ""}</div>
+                    {ev.organizer && (
+                      <div style={{ fontSize: "0.72rem", color: muted, marginBottom: 10 }}>{ev.organizer}</div>
                     )}
                     <div style={{ fontSize: "0.82rem", color: muted, lineHeight: 1.6, marginBottom: 14 }}>{ev.desc}</div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>

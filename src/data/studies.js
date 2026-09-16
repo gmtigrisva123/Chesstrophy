@@ -3,7 +3,7 @@ const STUDIES_DATA = [
   {
     category: "Endgame Studies", icon: "♚", color: "#C9A84C",
     items: [
-      { id:"kp-vs-k", title: "King & Pawn vs King", difficulty: "Beginner", progress: 80, lessons: 6, desc: "Master the opposition and key squares to convert pawn endgames.",
+      { id:"kp-vs-k", title: "King & Pawn vs King", difficulty: "Beginner", lessons: 6, desc: "Master the opposition and key squares to convert pawn endgames.",
         content: {
           chapters: [
             { title: "The Key Squares", fen: "8/8/8/4k3/4P3/4K3/8/8 w - - 0 1",
@@ -40,7 +40,7 @@ const STUDIES_DATA = [
           },
         }
       },
-      { id:"rook-endgame", title: "Rook Endgame Essentials", difficulty: "Intermediate", progress: 45, lessons: 10, desc: "Lucena, Philidor, and the most common rook endgame patterns.",
+      { id:"rook-endgame", title: "Rook Endgame Essentials", difficulty: "Intermediate", lessons: 10, desc: "Lucena, Philidor, and the most common rook endgame patterns.",
         content: {
           chapters: [
             { title: "The Lucena Position", fen: "1K6/1P6/8/8/8/8/r7/2k3R1 w - - 0 1",
@@ -76,7 +76,7 @@ const STUDIES_DATA = [
           },
         }
       },
-      { id:"bn-mate", title: "Bishop & Knight Checkmate", difficulty: "Advanced", progress: 10, lessons: 4, desc: "The hardest basic checkmate. Step-by-step method to corner the king.",
+      { id:"bn-mate", title: "Bishop & Knight Checkmate", difficulty: "Advanced", lessons: 4, desc: "The hardest basic checkmate. Step-by-step method to corner the king.",
         content: {
           chapters: [
             { title: "Why It's Hard", fen: "8/8/8/4k3/8/3BKN2/8/8 w - - 0 1",
@@ -116,7 +116,7 @@ const STUDIES_DATA = [
   {
     category: "Tactical Patterns", icon: "⚔", color: "#60a5fa",
     items: [
-      { id:"pins-skewers", title: "Pins & Skewers", difficulty: "Beginner", progress: 100, lessons: 8, desc: "Recognise and exploit linear piece tactics in any position.",
+      { id:"pins-skewers", title: "Pins & Skewers", difficulty: "Beginner", lessons: 8, desc: "Recognise and exploit linear piece tactics in any position.",
         content: {
           chapters: [
             { title: "Absolute vs Relative Pins", fen: "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1",
@@ -151,7 +151,7 @@ const STUDIES_DATA = [
           },
         }
       },
-      { id:"discovered-attacks", title: "Discovered Attacks", difficulty: "Intermediate", progress: 60, lessons: 7, desc: "Unleash hidden attacks by moving a piece out of the way.",
+      { id:"discovered-attacks", title: "Discovered Attacks", difficulty: "Intermediate", lessons: 7, desc: "Unleash hidden attacks by moving a piece out of the way.",
         content: {
           chapters: [
             { title: "The Basic Idea", fen: "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1",
@@ -185,7 +185,7 @@ const STUDIES_DATA = [
           },
         }
       },
-      { id:"interference-deflection", title: "Interference & Deflection", difficulty: "Advanced", progress: 20, lessons: 9, desc: "Remove defensive pieces through forcing combinations.",
+      { id:"interference-deflection", title: "Interference & Deflection", difficulty: "Advanced", lessons: 9, desc: "Remove defensive pieces through forcing combinations.",
         content: {
           chapters: [
             { title: "Deflection", fen: "3r2k1/5ppp/8/8/8/8/5PPP/3Q2K1 w - - 0 1",
@@ -224,7 +224,7 @@ const STUDIES_DATA = [
   {
     category: "Positional Concepts", icon: "♜", color: "#4ade80",
     items: [
-      { id:"pawn-structure", title: "Pawn Structure Fundamentals", difficulty: "Intermediate", progress: 35, lessons: 12, desc: "Isolated, doubled, and passed pawns — how to exploit or defend them.",
+      { id:"pawn-structure", title: "Pawn Structure Fundamentals", difficulty: "Intermediate", lessons: 12, desc: "Isolated, doubled, and passed pawns — how to exploit or defend them.",
         content: {
           chapters: [
             { title: "The Isolated Queen's Pawn", fen: "r1bqkb1r/pp3ppp/2n1pn2/3p4/2PP4/5N2/PP2BPPP/RNBQ1RK1 w kq - 0 1",
@@ -259,7 +259,7 @@ const STUDIES_DATA = [
           },
         }
       },
-      { id:"outposts", title: "Outpost Squares", difficulty: "Intermediate", progress: 0, lessons: 6, desc: "Place knights and bishops on dominant squares your opponent cannot attack.",
+      { id:"outposts", title: "Outpost Squares", difficulty: "Intermediate", lessons: 6, desc: "Place knights and bishops on dominant squares your opponent cannot attack.",
         content: {
           chapters: [
             { title: "What Makes an Outpost", fen: "r1bqkb1r/pp1n1ppp/2p1pn2/3p4/2PP4/2N2N2/PP2BPPP/R1BQK2R w KQkq - 0 1",
@@ -288,7 +288,7 @@ const STUDIES_DATA = [
           },
         }
       },
-      { id:"rook-7th", title: "Rook on the Seventh Rank", difficulty: "Advanced", progress: 0, lessons: 5, desc: "How to dominate with a rook cutting off the king on the 7th rank.",
+      { id:"rook-7th", title: "Rook on the Seventh Rank", difficulty: "Advanced", lessons: 5, desc: "How to dominate with a rook cutting off the king on the 7th rank.",
         content: {
           chapters: [
             { title: "Why the 7th Rank Matters", fen: "6k1/R4ppp/8/8/8/8/5PPP/6K1 w - - 0 1",
