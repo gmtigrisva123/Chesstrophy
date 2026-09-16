@@ -56,7 +56,8 @@ supabase/
 │   ├── …090600_community.sql                    ChessFlix, submissions, view counts
 │   ├── …090700_cms.sql                          Wiki, news, events, site settings
 │   ├── …090800_views_and_rpc.sql                Read models, spaced repetition, search
-│   └── 20260916000000_courses_cheat_sheet_object.sql  cheat_sheet is a JSON object
+│   ├── 20260916000000_courses_cheat_sheet_object.sql  cheat_sheet is a JSON object
+│   └── 20260916000100_profiles_username_unique_constraint.sql  username unique as a constraint
 └── tests/                 # pgTAP
     ├── 00_schema.test.sql   Invariants: RLS everywhere, cascades, uniqueness
     ├── 01_economy.test.sql  Idempotent rewards, XP curve, spend gating
