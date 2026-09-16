@@ -25,6 +25,12 @@ export default [
       "node_modules/**",
       "legacy/**",
       "**/*.min.js",
+      // Nested worktrees created by agent tooling (Kilo, Claude Code) are full
+      // checkouts of this repo. Linting them double-counts every file, and the
+      // path-anchored blocks below (`scripts/**`, `src/**`) do not match the
+      // nested copies, so they fall through with no globals and fail the hook.
+      ".kilo/**",
+      ".claude/worktrees/**",
     ],
   },
 
