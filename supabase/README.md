@@ -55,7 +55,8 @@ supabase/
 │   ├── …090500_economy.sql                      Ledger, wallet, grant/spend RPCs
 │   ├── …090600_community.sql                    ChessFlix, submissions, view counts
 │   ├── …090700_cms.sql                          Wiki, news, events, site settings
-│   └── …090800_views_and_rpc.sql                Read models, spaced repetition, search
+│   ├── …090800_views_and_rpc.sql                Read models, spaced repetition, search
+│   └── 20260916000000_courses_cheat_sheet_object.sql  cheat_sheet is a JSON object
 └── tests/                 # pgTAP
     ├── 00_schema.test.sql   Invariants: RLS everywhere, cascades, uniqueness
     ├── 01_economy.test.sql  Idempotent rewards, XP curve, spend gating
