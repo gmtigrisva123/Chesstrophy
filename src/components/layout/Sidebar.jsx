@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { getAdminSession, subscribeAdminSession } from "../../services/adminAuth.js";
 import { loadEconomy } from "../../services/economy.js";
-import { loadProfile } from "../../services/profile.js";
+import { loadProfile, signOutUser } from "../../services/profile.js";
 
 // Grouped nav for visual hierarchy — same routes/items as the original NAV_ITEMS list, restyled only.
 const NAV_GROUPS = [
@@ -194,8 +194,8 @@ function Sidebar({ dark, active, setActive }) {
         ))}
       </nav>
 
-      {adminSession && (
-        <div style={{ padding:"12px 20px 16px", borderTop:`1px solid ${border}`, flexShrink:0 }}>
+      <div style={{ padding:"12px 20px 16px", borderTop:`1px solid ${border}`, flexShrink:0, display:"flex", flexDirection:"column", gap:8 }}>
+        {adminSession && (
           <a href="#/admin" style={{
             display:"flex", alignItems:"center", gap:10, padding:"10px 14px", borderRadius:12, textDecoration:"none",
             background: dark ? "rgba(201,168,76,0.08)" : "rgba(201,168,76,0.12)", border:"1px solid rgba(201,168,76,0.35)",
@@ -203,8 +203,15 @@ function Sidebar({ dark, active, setActive }) {
           }}>
             <span>🛡️</span><span style={{ flex:1 }}>Admin panel</span><span style={{ opacity:0.7 }}>›</span>
           </a>
-        </div>
-      )}
+        )}
+        <button onClick={signOutUser} style={{
+          display:"flex", alignItems:"center", gap:10, width:"100%", textAlign:"left",
+          padding:"10px 14px", borderRadius:12, background:"transparent", border:`1px solid ${border}`,
+          color:mutedText, fontWeight:700, fontSize:"0.8rem", cursor:"pointer",
+        }}>
+          <span>⎋</span><span style={{ flex:1 }}>Sign out</span>
+        </button>
+      </div>
     </aside>
   );
 }

@@ -6,7 +6,7 @@ import { ACHIEVEMENTS } from "../../data/achievements.js";
 import { AVATAR_CHOICES } from "../../data/avatars.js";
 import { loadDQState } from "../../services/dailyQuestionsState.js";
 import { levelBounds, levelFromXP, loadEconomy } from "../../services/economy.js";
-import { loadProfile, saveProfile } from "../../services/profile.js";
+import { loadProfile, saveProfile, signOutUser } from "../../services/profile.js";
 import { loadPzState } from "../../services/puzzleProgress.js";
 
 function ProfilePage({ dark, setActive, themeMode, setThemeMode }) {
@@ -19,7 +19,6 @@ function ProfilePage({ dark, setActive, themeMode, setThemeMode }) {
   const [profile, setProfileRaw] = useState(loadProfile);
   const [econ] = useState(loadEconomy); // snapshot for this view; pages re-mount on nav so it's always fresh
   const [tab, setTab] = useState("profile");
-  const [logoutNote, setLogoutNote] = useState(false);
 
   const updateProfile = (patch) => {
     const next = { ...profile, ...patch };
@@ -270,12 +269,11 @@ function ProfilePage({ dark, setActive, themeMode, setThemeMode }) {
 
           <div style={{ background: card, border: `1px solid ${border}`, borderRadius: 16, padding: 20 }}>
             <div style={{ fontWeight: 800, fontSize: "0.86rem", color: fg, marginBottom: 10 }}>Account</div>
-            <div style={{ fontSize: "0.76rem", color: muted, lineHeight: 1.6, marginBottom: 14 }}>ChessProphy doesn&apos;t have account sign-in yet — this profile is stored locally on this device rather than tied to a real account.</div>
-            <button onClick={() => setLogoutNote(true)} style={{
+            <div style={{ fontSize: "0.76rem", color: muted, lineHeight: 1.6, marginBottom: 14 }}>Sign out to return to the welcome screen. Your progress stays saved on this device.</div>
+            <button onClick={signOutUser} style={{
               padding: "9px 18px", borderRadius: 9, border: `1px solid ${border}`, background: "transparent",
               color: "#ef4444", fontWeight: 700, fontSize: "0.78rem", cursor: "pointer",
-            }}>Log Out</button>
-            {logoutNote && <div style={{ fontSize: "0.72rem", color: muted, marginTop: 10 }}>There&apos;s no account session to log out of yet — your data stays right here on this device.</div>}
+            }}>Sign out</button>
           </div>
         </div>
       )}
