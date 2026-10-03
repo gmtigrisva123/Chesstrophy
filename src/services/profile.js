@@ -34,6 +34,17 @@ function loadProfile() {
 }
 function saveProfile(p) { writeJson(PROFILE_KEY, p); }
 
+// Sign out — there's no cross-device account to end, so this means: close out
+// any real Supabase session (a no-op today, since the main app doesn't open
+// one yet — see OnboardingFlow), then send the visitor back through
+// onboarding/login the way adminAuth.signOutAdmin() ends an admin session.
+async function signOutUser() {
+  try { await (await import("../lib/supabase/auth.js")).signOut(); } catch { /* no session to end */ }
+  const p = loadProfile();
+  saveProfile({ ...p, onboardingCompleted: false, isGuest: false, hasSeenLanding: false });
+  window.location.reload();
+}
+
 function hasJoinedEvent(id) { return !!(loadProfile().joinedEvents || {})[id]; }
 function joinEventLocal(id) {
   const p = loadProfile();
@@ -60,4 +71,5 @@ export {
   hasJoinedEvent,
   joinEventLocal,
   eventCountdown,
+  signOutUser,
 };

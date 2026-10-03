@@ -1,6 +1,6 @@
 import { getAdminSession } from "../../services/adminAuth.js";
 import { loadEconomy } from "../../services/economy.js";
-import { loadProfile } from "../../services/profile.js";
+import { loadProfile, signOutUser } from "../../services/profile.js";
 
 // Mobile drawer overlay
 // Mobile drawer overlay
@@ -129,13 +129,20 @@ function MobileDrawer({ dark, active, setActive, setSidebarOpen }) {
             </div>
           ))}
         </div>
-        {getAdminSession() && (
-          <div style={{ padding: "12px 18px 16px", borderTop: `1px solid ${border}`, flexShrink: 0 }}>
+        <div style={{ padding: "12px 18px 16px", borderTop: `1px solid ${border}`, flexShrink: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+          {getAdminSession() && (
             <a href="#/admin" onClick={() => setSidebarOpen(false)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12, textDecoration: "none", background: "rgba(201,168,76,0.1)", border: "1px solid rgba(201,168,76,0.35)", color: "#C9A84C", fontWeight: 700, fontSize: "0.82rem" }}>
               <span>🛡️</span><span style={{ flex: 1 }}>Admin panel</span><span style={{ opacity: 0.7 }}>›</span>
             </a>
-          </div>
-        )}
+          )}
+          <button onClick={() => { setSidebarOpen(false); signOutUser(); }} style={{
+            display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left",
+            padding: "10px 14px", borderRadius: 12, background: "transparent", border: `1px solid ${border}`,
+            color: mutedText, fontWeight: 700, fontSize: "0.82rem", cursor: "pointer",
+          }}>
+            <span>⎋</span><span style={{ flex: 1 }}>Sign out</span>
+          </button>
+        </div>
       </aside>
     </>
   );
